@@ -1,4 +1,4 @@
-class BackgroundManager {
+export class BackgroundManager {
 
     constructor(config) {
         this.target_id = config.target_id;
