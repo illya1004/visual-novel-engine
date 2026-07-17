@@ -2,6 +2,7 @@ import { Config } from "./core/DefaultConfig.js";
 import { BackgroundManager } from "./background/BackgroundManager.js";
 import { Engine } from "./core/engine.js";
 import { CharactersManager } from "./character/CharactersManager.js";
+import { DialogueManager } from "./dialogue/DialogueManager.js";
 
 export function createEngine(options = {}) {
 
@@ -13,6 +14,7 @@ export function createEngine(options = {}) {
 
     engine.characters = new CharactersManager(api);
     engine.background = new BackgroundManager(config);
+    engine.dialogue = new DialogueManager(api);
 
 
     return engine;
