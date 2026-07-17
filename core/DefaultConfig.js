@@ -4,6 +4,7 @@ export class Config {
         this.autoPlay = options.autoPlay ?? false;
         this.language = options.language ?? "uk";
         this.target_id = options.target_id ?? "background_image";
+        this.charactersApi = options.charactersApi ?? null;
 
         this.audio = {
             volume: options.audio?.volume ?? 1
