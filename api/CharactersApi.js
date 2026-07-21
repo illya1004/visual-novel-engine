@@ -24,4 +24,12 @@ export class CharactersApi {
     async getCharacterEmotion(id) {
         return this.request(`${this.baseUrl}/characters/${id}/emotion/`);
     }
+
+    async getDialogues() {
+        return this.request(`${this.baseUrl}/dialogues/`);
+    }
+
+    async getNodes() {
+        return this.request(`${this.baseUrl}/nodes/`);
+    }
 }
