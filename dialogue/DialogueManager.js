@@ -34,7 +34,8 @@ export class DialogueManager {
             return this.dialogues;
         }
 
-        this.dialogues = await this.api.getDialogues();
+        const response = await this.api.getDialogues();
+        this.dialogues = Array.isArray(response) ? response : (response?.results ?? []);
         this.currentIndex = 0;
         this.currentDialogue = null;
         return this.dialogues;
@@ -94,5 +95,9 @@ export class DialogueManager {
 
     finish() {
         this.typewriter?.finish();
+    }
+
+    cancel() {
+        this.typewriter?.cancel();
     }
 }

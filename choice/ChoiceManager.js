@@ -23,10 +23,8 @@ export class ChoiceManager {
             return null;
         }
 
-        if (this.onChoose) {
-            return this.onChoose(choice, index);
-        }
-
-        return choice;
+        const result = this.onChoose ? await this.onChoose(choice, index) : choice;
+        this.clear();
+        return result;
     }
 }

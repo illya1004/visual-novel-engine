@@ -5,14 +5,21 @@ export class CharacterState {
         this.emotion = null;
         this.position = "center";
         this.image = null;
+        this.lastShownAt = null;
+        this.speaking = false;
     }
 
     setEmotion(emotion) {
         this.emotion = emotion;
     }
 
+    setSpeaking(speaking) {
+        this.speaking = Boolean(speaking);
+    }
+
     show() {
         this.visible = true;
+        this.lastShownAt = Date.now();
     }
 
     hide() {

@@ -34,6 +34,11 @@ export class BackgroundManager {
         if (!img) {
             img = document.createElement("img");
             img.id = this.image_id;
+            img.alt = "";
+            img.style.position = "absolute";
+            img.style.inset = "0";
+            img.style.display = "block";
+            img.style.zIndex = "0";
             targetElement.appendChild(img);
         }
 
@@ -45,6 +50,15 @@ export class BackgroundManager {
         this.currentImage = image;
         this.currentOptions = options;
         return { image, options };
+    }
+
+    clear() {
+        const img = document.getElementById(this.image_id);
+        if (img) {
+            img.removeAttribute("src");
+        }
+        this.currentImage = null;
+        this.currentOptions = {};
     }
 
 

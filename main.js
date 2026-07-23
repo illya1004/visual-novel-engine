@@ -14,10 +14,14 @@ export function createEngine(options = {}) {
 
     const engine = new Engine(config);
 
-    engine.characters = new CharactersManager(api);
+    engine.characters = new CharactersManager(api, {
+        container_id: config.characterContainerId,
+        target_id: config.target_id
+    });
     engine.background = new BackgroundManager(config);
     engine.dialogue = new DialogueManager(api, {
-        target_id: config.dialogueTargetId || config.dialogue_target_id || "dialogue_text"
+        target_id: config.dialogueTargetId,
+        typewriterSpeed: config.textSpeed
     });
     engine.choice = new ChoiceManager();
     engine.nodeManager = new NodeManager(api, {

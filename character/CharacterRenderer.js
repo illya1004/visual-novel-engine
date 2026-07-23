@@ -21,12 +21,30 @@ export class CharacterRenderer {
         this.activeCharacterId = null;
     }
 
+    getPreferredContainerId() {
+        const configuredId = this.htmlElements.container_id;
+
+        if (typeof document !== "undefined" && configuredId && document.getElementById(configuredId)) {
+            return configuredId;
+        }
+
+        const fallbackIds = ["characters", "character-container"];
+        for (const id of fallbackIds) {
+            if (typeof document !== "undefined" && document.getElementById(id)) {
+                return id;
+            }
+        }
+
+        return configuredId || "character-container";
+    }
+
     setActiveCharacter(characterId) {
         this.activeCharacterId = characterId;
     }
 
     getDisplayContainer() {
-        const containerId = this.htmlElements.container_id;
+        const containerId = this.getPreferredContainerId();
+        this.htmlElements.container_id = containerId;
         let container = containerId ? document.getElementById(containerId) : null;
 
         if (!container) {
@@ -50,11 +68,39 @@ export class CharacterRenderer {
         return container;
     }
 
-    getOrCreateSlot(characterId) {
+    getLegacySlot(position = "center") {
+        if (typeof document === "undefined") {
+            return null;
+        }
+
+        const legacyIds = {
+            left: "character-left",
+            center: "character-center",
+            right: "character-right"
+        };
+        const element = document.getElementById(legacyIds[position] || legacyIds.center);
+
+        if (!element) {
+            return null;
+        }
+
+        const isAlreadyUsed = [...this.slots.values()]
+            .some(slot => slot.slotElement === element);
+
+        return isAlreadyUsed ? null : { slotElement: element, imgElement: element, nameElement: null };
+    }
+
+    getOrCreateSlot(characterId, position = "center") {
         const slot = this.slots?.get(characterId);
 
         if (slot) {
             return slot;
+        }
+
+        const legacySlot = this.getLegacySlot(position);
+        if (legacySlot) {
+            this.slots?.set(characterId, legacySlot);
+            return legacySlot;
         }
 
         const container = this.getDisplayContainer();
@@ -105,10 +151,26 @@ export class CharacterRenderer {
             ...positionStyles,
             opacity: String(opacity),
             filter,
-            transform: positionStyles.transform
+            transform: positionStyles.transform,
+            display: "block",
+            visibility: "visible"
         });
-        slot.imgElement.style.opacity = String(opacity);
-        slot.imgElement.style.filter = filter;
+
+        if (slot.imgElement) {
+            slot.imgElement.style.opacity = String(opacity);
+            slot.imgElement.style.filter = filter;
+            slot.imgElement.style.display = "block";
+            slot.imgElement.style.visibility = "visible";
+        }
+
+        if (slot.nameElement) {
+            slot.nameElement.style.opacity = String(opacity);
+        }
+
+        if (slot.slotElement.classList) {
+            slot.slotElement.classList.toggle("active", isSpeaking);
+            slot.slotElement.classList.toggle("dim", !isSpeaking);
+        }
     }
 
     render(state, character, style = {}) {
@@ -122,14 +184,20 @@ export class CharacterRenderer {
             return slot || null;
         }
 
-        const slot = this.getOrCreateSlot(state.id);
+        const slot = this.getOrCreateSlot(state.id, state.position);
         const imageUrl = state.image || character?.image || null;
         const displayName = character?.name || state.id;
         const isSpeaking = this.activeCharacterId === state.id;
 
-        slot.imgElement.src = imageUrl;
-        slot.nameElement.textContent = displayName;
-        slot.slotElement.style.display = "flex";
+        if (slot.imgElement) {
+            slot.imgElement.src = imageUrl;
+        }
+
+        if (slot.nameElement) {
+            slot.nameElement.textContent = displayName;
+        }
+
+        slot.slotElement.style.display = "block";
 
         Object.assign(slot.slotElement.style, {
             width: "30%",

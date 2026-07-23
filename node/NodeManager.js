@@ -8,7 +8,34 @@ export class NodeManager {
         this.backgroundManager = managers.backgroundManager || api?.backgroundManager || null;
         this.charactersManager = managers.charactersManager || api?.charactersManager || null;
         this.choiceManager = managers.choiceManager || api?.choiceManager || null;
+        this.transitionLogger = managers.transitionLogger || api?.transitionLogger || null;
         this._lastChoiceNode = null;
+    }
+
+    _logTransition(fromNodeId, toNodeId, reason = 'advance') {
+        const fromLabel = fromNodeId ?? 'start';
+        const toLabel = toNodeId ?? 'end';
+        const message = `[node-transition] ${fromLabel} -> ${toLabel} (${reason})`;
+
+        if (typeof this.transitionLogger === 'function') {
+            this.transitionLogger(message);
+        } else {
+            console.log(message);
+        }
+
+        return message;
+    }
+
+    _moveToNode(targetNode, reason = 'advance') {
+        if (!targetNode) {
+            return null;
+        }
+
+        const previousNodeId = this.currentNodeId;
+        this.currentNodeIndex = this.nodes.findIndex(node => String(node.id) === String(targetNode.id));
+        this.currentNodeId = targetNode.id;
+        this._logTransition(previousNodeId, targetNode.id, reason);
+        return targetNode;
     }
 
     async loadNodes() {
@@ -20,14 +47,9 @@ export class NodeManager {
         }
 
         const loadedNodes = await this.api.getNodes();
-        this.nodes = Array.isArray(loadedNodes) ? loadedNodes : [];
+        this.nodes = Array.isArray(loadedNodes) ? loadedNodes : (loadedNodes?.results ?? []);
         this.currentNodeId = null;
         this.currentNodeIndex = -1;
-
-        if (this.nodes.length) {
-            this.currentNodeId = this.nodes[0].id;
-            this.currentNodeIndex = 0;
-        }
 
         return this.nodes;
     }
@@ -47,9 +69,7 @@ export class NodeManager {
             return null;
         }
 
-        this.currentNodeId = targetNode.id;
-        this.currentNodeIndex = this.nodes.findIndex(node => String(node.id) === String(targetNode.id));
-        return targetNode;
+        return this._moveToNode(targetNode, 'goto');
     }
 
     async start() {
@@ -57,8 +77,8 @@ export class NodeManager {
             return null;
         }
 
-        this.currentNodeIndex = 0;
-        this.currentNodeId = this.nodes[0].id;
+        const firstNode = this.nodes[0];
+        this._moveToNode(firstNode, 'start');
         return this.executeNode(this.current());
     }
 
@@ -73,18 +93,17 @@ export class NodeManager {
         }
 
         const nextNodeId = currentNode.next ?? currentNode.nextNodeId ?? null;
-        if (!nextNodeId) {
+        if (nextNodeId === null || nextNodeId === undefined) {
             return null;
         }
 
         const targetNode = this.get(nextNodeId);
+        console.log(`Next node: ${nextNodeId}`, targetNode);
         if (!targetNode) {
             return null;
         }
 
-        this.currentNodeIndex = this.nodes.findIndex(node => String(node.id) === String(targetNode.id));
-        this.currentNodeId = targetNode.id;
-        return this.executeNode(targetNode);
+        return this.executeNode(this._moveToNode(targetNode, 'next'));
     }
 
     async selectChoice(choiceIndex = 0) {
@@ -100,14 +119,16 @@ export class NodeManager {
             return null;
         }
 
+        if (this.choiceManager?.clear) {
+            this.choiceManager.clear();
+        }
+
         const targetNode = this.get(choice.nextNodeId ?? choice.next ?? null);
         if (!targetNode) {
             return null;
         }
 
-        this.currentNodeIndex = this.nodes.findIndex(node => String(node.id) === String(targetNode.id));
-        this.currentNodeId = targetNode.id;
-        return this.executeNode(targetNode);
+        return this.executeNode(this._moveToNode(targetNode, 'choice'));
     }
 
     async executeNode(node) {
@@ -142,6 +163,10 @@ export class NodeManager {
             await this.backgroundManager.ShowBackground(node.image, node.options || {});
         }
 
+        if (node.skip_node) {
+            this.next();
+        }
+
         return node;
     }
 
@@ -152,16 +177,37 @@ export class NodeManager {
             await this.dialogueManager.show(dialogue);
         }
 
+        if (this.charactersManager?.showDialogueCharacter) {
+            this.charactersManager.showDialogueCharacter(dialogue);
+        }
+
         return node;
     }
 
     async handleCharacterNode(node) {
-        if (this.charactersManager?.showCharacter) {
-            this.charactersManager.showCharacter(node.characterId, node.position || 'center', node.style || {});
+        const characterId = node.characterId ?? node.character_id;
+        const speakingOption = node.speaking ?? node.isSpeaking ?? node.is_speaking ?? null;
+
+        if (node.visible === false || node.action === 'hide') {
+            if (this.charactersManager?.hideCharacter) {
+                this.charactersManager.hideCharacter(characterId);
+            }
+            if (speakingOption === false) {
+                this.charactersManager?.setSpeakingCharacter?.(null, { speaking: false });
+            }
+            return node;
         }
 
-        if (this.charactersManager?.setSpeakingCharacter && node.characterId) {
-            this.charactersManager.setSpeakingCharacter(node.characterId);
+        if (this.charactersManager?.showCharacter) {
+            this.charactersManager.showCharacter(characterId, node.position || 'center', node.style || {}, { speaking: speakingOption });
+        }
+
+        if (node.emotion && this.charactersManager?.changeEmotion) {
+            await this.charactersManager.changeEmotion(characterId, node.emotion);
+        }
+
+        if (this.charactersManager?.setSpeakingCharacter && characterId) {
+            this.charactersManager.setSpeakingCharacter(characterId, { speaking: speakingOption });
         }
 
         return node;
