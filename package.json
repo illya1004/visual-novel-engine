@@ -1,0 +1,9 @@
+{
+  "name": "web-novel-engine",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/api_test.js tests/node_manager_test.js tests/character_manager_test.js"
+  }
+}
