@@ -131,6 +131,15 @@ export class NodeManager {
         return this.executeNode(this._moveToNode(targetNode, 'choice'));
     }
 
+    async handleNodeOptions(node) {
+        if (node.auto_next) {
+            await this.next();
+            return true;
+        }
+
+        return false;
+    }
+
     async executeNode(node) {
         if (!node) {
             return null;
@@ -140,18 +149,27 @@ export class NodeManager {
             this.choiceManager.clear();
         }
 
+        let result = null;
+
         switch (node.type) {
             case 'background':
-                return this.handleBackgroundNode(node);
+                result = await this.handleBackgroundNode(node);
+                break;
             case 'dialogue':
-                return this.handleDialogueNode(node);
+                result = await this.handleDialogueNode(node);
+                break;
             case 'character':
-                return this.handleCharacterNode(node);
+                result = await this.handleCharacterNode(node);
+                break;
             case 'choice':
-                return this.handleChoiceNode(node);
+                result = await this.handleChoiceNode(node);
+                break;
             default:
-                return node;
+                result = node;
         }
+
+        await this.handleNodeOptions(node);
+        return result;
     }
 
     async handleBackgroundNode(node) {
@@ -161,10 +179,6 @@ export class NodeManager {
             await this.backgroundManager.showBackground(node.image, node.options || {});
         } else if (this.backgroundManager?.ShowBackground) {
             await this.backgroundManager.ShowBackground(node.image, node.options || {});
-        }
-
-        if (node.skip_node) {
-            this.next();
         }
 
         return node;
@@ -191,9 +205,6 @@ export class NodeManager {
         if (node.visible === false || node.action === 'hide') {
             if (this.charactersManager?.hideCharacter) {
                 this.charactersManager.hideCharacter(characterId);
-            }
-            if (speakingOption === false) {
-                this.charactersManager?.setSpeakingCharacter?.(null, { speaking: false });
             }
             return node;
         }

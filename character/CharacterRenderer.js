@@ -168,8 +168,8 @@ export class CharacterRenderer {
         }
 
         if (slot.slotElement.classList) {
-            slot.slotElement.classList.toggle("active", isSpeaking);
-            slot.slotElement.classList.toggle("dim", !isSpeaking);
+            slot.slotElement.classList.toggle("active", state.speaking);
+            slot.slotElement.classList.toggle("dim", !state.speaking);
         }
     }
 
@@ -187,7 +187,7 @@ export class CharacterRenderer {
         const slot = this.getOrCreateSlot(state.id, state.position);
         const imageUrl = state.image || character?.image || null;
         const displayName = character?.name || state.id;
-        const isSpeaking = this.activeCharacterId === state.id;
+        const isSpeaking = state.speaking;
 
         if (slot.imgElement) {
             slot.imgElement.src = imageUrl;
