@@ -148,7 +148,13 @@ export class CharactersManager {
         this.speakingCharacterId = nextCharacterId;
         const state = this.getState(nextCharacterId);
         state.show();
-        state.setSpeaking(true);
+
+        if (options?.speaking !== undefined) {
+            state.setSpeaking(Boolean(options.speaking));
+        }
+        else {
+            state.setSpeaking(true);
+        }
 
         for (const [characterIdKey, otherState] of Object.entries(this.states)) {
             if (String(characterIdKey) !== String(nextCharacterId)) {
@@ -176,9 +182,7 @@ export class CharactersManager {
 
         const shouldSpeak = this._getCharacterSpeakingFlag(character, { speaking: options?.speaking ?? options?.isSpeaking ?? options?.is_speaking ?? null });
 
-        if (shouldSpeak) {
-            this.setSpeakingCharacter(id, options);
-        } else if (!this.speakingCharacterId && state.visible) {
+        if (options?.speaking !== undefined) {
             this.setSpeakingCharacter(id, options);
         }
 
@@ -212,8 +216,9 @@ export class CharactersManager {
             : (character.defaultPosition || character.default_position || "center");
 
         const shouldSpeak = dialogue?.speaking ?? dialogue?.isSpeaking ?? dialogue?.is_speaking ?? true;
+
         this.showCharacter(characterId, position, {}, { speaking: shouldSpeak });
-        this.setSpeakingCharacter(characterId, { speaking: shouldSpeak });
+
         return character;
     }
 
