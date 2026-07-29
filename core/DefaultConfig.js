@@ -3,6 +3,55 @@ export class Config {
         this.textSpeed = options.textSpeed ?? 50;
         this.autoPlay = options.autoPlay ?? false;
         this.language = options.language ?? "uk";
+        const viewportOptions = options.viewport || {};
+        const orientationOptions = typeof options.orientation === "object"
+            ? options.orientation
+            : {};
+        const orientationMode = typeof options.orientation === "string"
+            ? options.orientation
+            : orientationOptions.mode;
+
+        this.viewport = {
+            rootTargetId: viewportOptions.rootTargetId
+                ?? viewportOptions.root_target_id
+                ?? options.rootTargetId
+                ?? options.root_target_id
+                ?? options.gameRootId
+                ?? options.game_root_id
+                ?? "game",
+            orientation: viewportOptions.orientation
+                ?? orientationMode
+                ?? options.screenOrientation
+                ?? options.screen_orientation
+                ?? "landscape",
+            aspectRatio: viewportOptions.aspectRatio
+                ?? viewportOptions.aspect_ratio
+                ?? orientationOptions.aspectRatio
+                ?? orientationOptions.aspect_ratio
+                ?? options.aspectRatio
+                ?? options.aspect_ratio
+                ?? null,
+            landscapeAspectRatio: viewportOptions.landscapeAspectRatio
+                ?? viewportOptions.landscape_aspect_ratio
+                ?? orientationOptions.landscapeAspectRatio
+                ?? orientationOptions.landscape_aspect_ratio
+                ?? "16 / 9",
+            portraitAspectRatio: viewportOptions.portraitAspectRatio
+                ?? viewportOptions.portrait_aspect_ratio
+                ?? orientationOptions.portraitAspectRatio
+                ?? orientationOptions.portrait_aspect_ratio
+                ?? "9 / 16",
+            fit: viewportOptions.fit
+                ?? orientationOptions.fit
+                ?? options.viewportFit
+                ?? options.viewport_fit
+                ?? "contain",
+            centerStage: viewportOptions.centerStage
+                ?? viewportOptions.center_stage
+                ?? orientationOptions.centerStage
+                ?? orientationOptions.center_stage
+                ?? true
+        };
         this.target_id = options.target_id ?? options.targetId ?? "background_image";
         this.dialogueTargetId = options.dialogueTargetId ?? options.dialogue_target_id ?? "dialogue_text";
         this.speakerNameTargetId = options.speakerNameTargetId
@@ -10,6 +59,21 @@ export class Config {
             ?? options.dialogueNameTargetId
             ?? options.dialogue_name_target_id
             ?? "name";
+        this.dialogueBoxTargetId = options.dialogueBoxTargetId
+            ?? options.dialogue_box_target_id
+            ?? options.dialogueContainerId
+            ?? options.dialogue_container_id
+            ?? "dialogue";
+        this.dialogueLayout = {
+            position: options.dialogueLayout?.position
+                ?? options.dialoguePosition
+                ?? options.dialogue_position
+                ?? "full",
+            width: options.dialogueLayout?.width
+                ?? options.dialogueWidth
+                ?? options.dialogue_width
+                ?? null
+        };
         this.characterContainerId = options.characterContainerId ?? options.character_container_id ?? "characters";
         this.autoDeactivateOtherSpeakers = options.autoDeactivateOtherSpeakers
             ?? options.autoDeactivateOtherCharacters
@@ -31,7 +95,12 @@ export class Config {
         this.save = {
             enabled: options.save?.enabled ?? true,
             storageKey: options.save?.storageKey ?? "webNovel.save",
-            storage: options.save?.storage ?? null
+            storage: options.save?.storage ?? null,
+            autoSaveEnabled: options.save?.autoSaveEnabled ?? options.save?.auto_save_enabled ?? options.autoSaveEnabled ?? true,
+            autoSaveIntervalMs: options.save?.autoSaveIntervalMs
+                ?? options.save?.auto_save_interval_ms
+                ?? options.autoSaveIntervalMs
+                ?? 600000
         };
 
         this.settings = {

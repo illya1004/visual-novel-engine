@@ -11,6 +11,7 @@ import { SettingsManager } from "./settings/SettingsManager.js";
 import { SaveManager } from "./save/SaveManager.js";
 import { GalleryManager } from "./gallery/GalleryManager.js";
 import { InterfaceManager } from "./ui/InterfaceManager.js";
+import { ViewportManager } from "./layout/ViewportManager.js";
 
 export function createEngine(options = {}) {
 
@@ -18,6 +19,8 @@ export function createEngine(options = {}) {
     const api = config.charactersApi || new CharactersApi(config.apiBaseUrl || "");
 
     const engine = new Engine(config);
+    engine.viewport = new ViewportManager(config.viewport);
+    engine.viewport.apply();
     engine.settings = new SettingsManager({
         ...config.settings,
         api,
@@ -42,7 +45,9 @@ export function createEngine(options = {}) {
     engine.dialogue = new DialogueManager(api, {
         target_id: config.dialogueTargetId,
         speakerNameTargetId: config.speakerNameTargetId,
-        typewriterSpeed: config.textSpeed
+        dialogueBoxTargetId: config.dialogueBoxTargetId,
+        typewriterSpeed: config.textSpeed,
+        layout: config.dialogueLayout
     });
     engine.sound = new SoundManager(config.audio);
     engine.save = new SaveManager(config.save);
@@ -55,7 +60,8 @@ export function createEngine(options = {}) {
         soundManager: engine.sound,
         settingsManager: engine.settings,
         galleryManager: engine.gallery,
-        choiceManager: engine.choice
+        choiceManager: engine.choice,
+        viewportManager: engine.viewport
     });
     engine.settings.applyAll({
         soundManager: engine.sound,

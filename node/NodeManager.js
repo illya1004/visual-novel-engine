@@ -11,6 +11,7 @@ export class NodeManager {
         this.settingsManager = managers.settingsManager || api?.settingsManager || null;
         this.galleryManager = managers.galleryManager || api?.galleryManager || null;
         this.choiceManager = managers.choiceManager || api?.choiceManager || null;
+        this.viewportManager = managers.viewportManager || api?.viewportManager || null;
         this.transitionLogger = managers.transitionLogger || api?.transitionLogger || null;
         this._lastChoiceNode = null;
     }
@@ -169,6 +170,11 @@ export class NodeManager {
                 break;
             case 'settings':
                 result = await this.handleSettingsNode(node);
+                break;
+            case 'viewport':
+            case 'layout':
+            case 'orientation':
+                result = await this.handleViewportNode(node);
                 break;
             case 'choice':
                 result = await this.handleChoiceNode(node);
@@ -429,6 +435,11 @@ export class NodeManager {
             this.settingsManager.applyToCharacters?.(this.charactersManager);
         }
 
+        return node;
+    }
+
+    async handleViewportNode(node) {
+        this.viewportManager?.applyNode?.(node);
         return node;
     }
 

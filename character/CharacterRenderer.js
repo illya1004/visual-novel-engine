@@ -64,6 +64,7 @@ export class CharacterRenderer {
                 document.body.appendChild(container);
             }
         }
+        container.classList?.add?.("web-novel-characters");
 
         return container;
     }

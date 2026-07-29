@@ -21,6 +21,7 @@ export class InterfaceManager {
     _createButton(label, title, onClick) {
         const button = document.createElement("button");
         button.type = "button";
+        button.className = "web-novel-tool-button";
         button.textContent = label;
         button.title = title;
         button.setAttribute("aria-label", title);
@@ -42,6 +43,7 @@ export class InterfaceManager {
         }
 
         this.toolbar = document.createElement("div");
+        this.toolbar.className = "web-novel-toolbar";
         this.toolbar.dataset.novelUi = "toolbar";
         Object.assign(this.toolbar.style, {
             position: "fixed",
@@ -66,6 +68,7 @@ export class InterfaceManager {
 
     _createSettingsPanel() {
         const panel = document.createElement("form");
+        panel.className = "web-novel-settings-panel";
         panel.dataset.novelUi = "settings";
         panel.hidden = true;
         Object.assign(panel.style, {

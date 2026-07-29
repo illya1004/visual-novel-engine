@@ -28,6 +28,7 @@ export class BackgroundManager {
         if (!targetElement) {
             throw new Error(`Target element '${this.target_id}' not found`);
         }
+        targetElement.classList?.add?.("web-novel-background");
 
         let img = document.getElementById(this.image_id);
 
