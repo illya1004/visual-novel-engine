@@ -16,8 +16,10 @@ export class DialogueManager {
         this.speakerNameElement = options.speakerNameElement || null;
         this.typewriter = options.typewriter || null;
         this.typewriterSpeed = options.typewriterSpeed ?? 25;
+        this.textSize = options.textSize ?? null;
         this.typewriterSpeedMultiplier = options.typewriterSpeedMultiplier ?? 1;
         this._bindTargetElement();
+        this.setTextSize(this.textSize);
     }
 
     _bindTargetElement() {
@@ -46,6 +48,24 @@ export class DialogueManager {
         }
 
         this.speakerNameElement.textContent = this.getSpeakerName(dialogue);
+    }
+
+    setTypewriterSpeed(speed) {
+        const nextSpeed = Number(speed);
+
+        if (Number.isFinite(nextSpeed) && nextSpeed > 0) {
+            this.typewriterSpeed = nextSpeed;
+        }
+    }
+
+    setTextSize(size) {
+        this.textSize = size;
+
+        if (!this.targetElement || size === null || size === undefined || size === "") {
+            return;
+        }
+
+        this.targetElement.style.fontSize = typeof size === "number" ? `${size}px` : String(size);
     }
 
     async load() {

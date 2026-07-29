@@ -7,15 +7,33 @@ export class CharactersApi {
 
     async request(url, options = {}) {
         const response = await fetch(url, {
-            headers: this.requestHeaders,
-            ...options
+            ...options,
+            headers: {
+                ...this.requestHeaders,
+                ...(options.headers || {})
+            }
         });
 
         if (!response.ok) {
             throw new Error(`API error: ${response.status}`);
         }
 
-        return await response.json();
+        if (response.status === 204) {
+            return null;
+        }
+
+        const text = await response.text();
+        return text ? JSON.parse(text) : null;
+    }
+
+    async postJson(url, payload = {}) {
+        return this.request(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+        });
     }
 
     unwrapCollection(response) {
@@ -64,5 +82,23 @@ export class CharactersApi {
 
         const response = await this.request(`${this.baseUrl}/nodes/?${query.toString()}`);
         return this.unwrapCollection(response);
+    }
+
+    async unlockGalleryImage(payload = {}) {
+        return this.postJson(`${this.baseUrl}/gallery/unlock/`, payload);
+    }
+
+    async getGalleryImages(params = {}) {
+        const query = new URLSearchParams({
+            limit: String(params.limit ?? this.defaultLimit),
+            offset: String(params.offset ?? 0)
+        });
+
+        const response = await this.request(`${this.baseUrl}/gallery/?${query.toString()}`);
+        return this.unwrapCollection(response);
+    }
+
+    async saveProtagonistName(payload = {}) {
+        return this.postJson(`${this.baseUrl}/protagonist-names/`, payload);
     }
 }

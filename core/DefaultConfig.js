@@ -29,7 +29,40 @@ export class Config {
         };
 
         this.save = {
-            enabled: options.save?.enabled ?? true
+            enabled: options.save?.enabled ?? true,
+            storageKey: options.save?.storageKey ?? "webNovel.save",
+            storage: options.save?.storage ?? null
+        };
+
+        this.settings = {
+            ...(options.settings || {}),
+            textSpeed: options.settings?.textSpeed ?? this.textSpeed,
+            textSize: options.settings?.textSize ?? options.textSize ?? null,
+            protagonistName: options.settings?.protagonistName ?? options.protagonistName ?? options.heroName ?? "",
+            protagonistCharacterId: options.settings?.protagonistCharacterId ?? options.protagonistCharacterId ?? options.heroCharacterId ?? null,
+            promptForProtagonistName: options.settings?.promptForProtagonistName ?? options.promptForProtagonistName ?? true,
+            userAccountId: options.settings?.userAccountId
+                ?? options.settings?.user_account_id
+                ?? options.userAccountId
+                ?? options.user_account_id
+                ?? options.accountId
+                ?? options.account_id
+                ?? null,
+            novelId: options.settings?.novelId
+                ?? options.settings?.novel_id
+                ?? options.novelId
+                ?? options.novel_id
+                ?? null
+        };
+
+        this.gallery = {
+            enabled: options.gallery?.enabled ?? true
+        };
+
+        this.interface = {
+            enabled: options.interface?.enabled ?? true,
+            autoCreateControls: options.interface?.autoCreateControls ?? options.autoCreateInterfaceControls ?? true,
+            ...(options.interface || {})
         };
     }
 }

@@ -8,6 +8,8 @@ export class NodeManager {
         this.backgroundManager = managers.backgroundManager || api?.backgroundManager || null;
         this.charactersManager = managers.charactersManager || api?.charactersManager || null;
         this.soundManager = managers.soundManager || api?.soundManager || null;
+        this.settingsManager = managers.settingsManager || api?.settingsManager || null;
+        this.galleryManager = managers.galleryManager || api?.galleryManager || null;
         this.choiceManager = managers.choiceManager || api?.choiceManager || null;
         this.transitionLogger = managers.transitionLogger || api?.transitionLogger || null;
         this._lastChoiceNode = null;
@@ -132,12 +134,11 @@ export class NodeManager {
     }
 
     async handleNodeOptions(node) {
-        if (node.auto_next) {
-            await this.next();
-            return true;
+        if (node.auto_next || node.skip_auto || node.skipAuto) {
+            return await this.next();
         }
 
-        return false;
+        return null;
     }
 
     async executeNode(node) {
@@ -166,6 +167,9 @@ export class NodeManager {
             case 'audio':
                 result = await this.handleSoundNode(node);
                 break;
+            case 'settings':
+                result = await this.handleSettingsNode(node);
+                break;
             case 'choice':
                 result = await this.handleChoiceNode(node);
                 break;
@@ -173,8 +177,7 @@ export class NodeManager {
                 result = node;
         }
 
-        await this.handleNodeOptions(node);
-        return result;
+        return await this.handleNodeOptions(node) ?? result;
     }
 
     async handleBackgroundNode(node) {
@@ -185,6 +188,8 @@ export class NodeManager {
         } else if (this.backgroundManager?.ShowBackground) {
             await this.backgroundManager.ShowBackground(node.image, node.options || {});
         }
+
+        await this.galleryManager?.unlockFromNode?.(node);
 
         return node;
     }
@@ -348,7 +353,7 @@ export class NodeManager {
             speakerCharacter = this.charactersManager.showDialogueCharacter(dialogue);
         }
 
-        const dialogueToShow = dialogue && typeof dialogue === "object"
+        let dialogueToShow = dialogue && typeof dialogue === "object"
             ? { ...dialogue }
             : dialogue;
 
@@ -361,6 +366,8 @@ export class NodeManager {
         ) {
             dialogueToShow.speakerName = speakerCharacter.name;
         }
+
+        dialogueToShow = this.settingsManager?.applyToDialogueData?.(dialogueToShow) ?? dialogueToShow;
 
         if (this.dialogueManager?.show) {
             await this.dialogueManager.show(dialogueToShow);
@@ -407,6 +414,19 @@ export class NodeManager {
             this.charactersManager.setSpeakingCharacter(characterId, {
                 speaking: true
             });
+        }
+
+        return node;
+    }
+
+    async handleSettingsNode(node) {
+        const values = node.settings || node.values || node.data || {};
+
+        if (this.settingsManager?.update) {
+            this.settingsManager.update(values);
+            this.settingsManager.applyToSound?.(this.soundManager);
+            this.settingsManager.applyToDialogue?.(this.dialogueManager);
+            this.settingsManager.applyToCharacters?.(this.charactersManager);
         }
 
         return node;

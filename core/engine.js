@@ -18,7 +18,13 @@ export class Engine {
 
     async start() {
         this.state.status = "loading";
+        await this.settings?.promptForNovelStart?.();
         await this.characters?.loadCharacters?.();
+        this.settings?.applyAll?.({
+            soundManager: this.sound,
+            dialogueManager: this.dialogue,
+            charactersManager: this.characters
+        });
         await this.nodeManager?.loadNodes?.();
 
         const node = await this.nodeManager?.start?.();
@@ -36,6 +42,50 @@ export class Engine {
         const node = await this.nodeManager?.selectChoice?.(index);
         this._syncState(node);
         return node;
+    }
+
+    updateSettings(values = {}) {
+        const settings = this.settings?.update?.(values) ?? null;
+        this.settings?.applyAll?.({
+            soundManager: this.sound,
+            dialogueManager: this.dialogue,
+            charactersManager: this.characters
+        });
+        return settings;
+    }
+
+    saveGame() {
+        return this.save?.save?.(this) ?? null;
+    }
+
+    async loadGame() {
+        const snapshot = this.save?.load?.();
+
+        if (!snapshot || snapshot.currentNodeId === null || snapshot.currentNodeId === undefined) {
+            return null;
+        }
+
+        if (snapshot.settings) {
+            this.updateSettings(snapshot.settings);
+        }
+
+        if (!this.characters?.characters?.length) {
+            await this.characters?.loadCharacters?.();
+        }
+        this.settings?.applyToCharacters?.(this.characters);
+
+        if (!this.nodeManager?.nodes?.length) {
+            await this.nodeManager?.loadNodes?.();
+        }
+
+        const node = this.nodeManager?.goTo?.(snapshot.currentNodeId);
+        const result = await this.nodeManager?.executeNode?.(node);
+        this._syncState(result);
+        return result;
+    }
+
+    toggleInterface(forceHidden) {
+        return this.interface?.toggleInterface?.(forceHidden) ?? false;
     }
 
     reset() {

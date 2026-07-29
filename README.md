@@ -52,6 +52,10 @@ py -m unittest discover -s tests -p "*_test.py"
 | `character/` | Стан, DOM-рендеринг та емоції персонажів. |
 | `dialogue/` | Показ реплік і ефект друку. |
 | `sound/SoundManager.js` | Фонова музика, звукові ефекти, гучність і вимкнення аудіо. |
+| `settings/SettingsManager.js` | Збережені налаштування: звук, швидкість і розмір тексту; ім'я героя тримається окремо для поточної гри. |
+| `save/SaveManager.js` | Ручне збереження поточного вузла, крім автоматичних `auto_next` / `skip_auto`. |
+| `gallery/GalleryManager.js` | Відкриття фонових зображень у галереї через API. |
+| `ui/InterfaceManager.js` | Кнопки налаштувань, збереження та ока для приховування інтерфейсу. |
 | `choice/ChoiceManager.js` | Поточні варіанти вибору. |
 | `api/CharactersApi.js` | HTTP-клієнт контракту API. |
 | `tests/test_server.py` | Локальний Flask-сервер, генератор сценарію й статика. |
@@ -103,6 +107,13 @@ const engine = createEngine({
         musicVolume: 0.8,
         soundVolume: 1
     },
+    settings: {
+        protagonistCharacterId: 1,
+        promptForProtagonistName: true,
+        userAccountId: 42,
+        novelId: 7,
+        textSize: 22
+    },
     textSpeed: 25
 });
 
@@ -113,6 +124,10 @@ const nextNode = await engine.next();
 
 // Викликати після натискання кнопки вибору.
 const selectedNode = await engine.selectChoice(0);
+
+// Ручне збереження і завантаження.
+engine.saveGame();
+await engine.loadGame();
 
 // Скинути стан для повторного проходження.
 engine.reset();
@@ -133,7 +148,16 @@ engine.reset();
 | `audio.volume` | `number` | `1` | Загальна гучність від `0` до `1`. |
 | `audio.musicVolume` | `number` | `1` | Гучність фонової музики від `0` до `1`. |
 | `audio.soundVolume` | `number` | `1` | Гучність звукових ефектів від `0` до `1`. |
+| `settings.protagonistCharacterId` | `number \| string` | `null` | ID персонажа, чиє ім'я замінюється на введене гравцем. |
+| `settings.promptForProtagonistName` | `boolean` | `true` | Питає ім'я головного героя на старті кожної новели. |
+| `settings.userAccountId` | `number \| string` | `null` | Акаунт користувача для запису імені героя в БД. |
+| `settings.novelId` | `number \| string` | `null` | Новела, до якої прив'язане введене ім'я героя. |
+| `settings.textSize` | `number \| string` | `null` | Розмір тексту діалогу, наприклад `22` або `"1.3rem"`. |
+| `save.enabled` | `boolean` | `true` | Дозволяє кнопку та API ручного збереження. |
+| `interface.autoCreateControls` | `boolean` | `true` | Автоматично створює кнопки налаштувань, збереження та ока. |
 | `textSpeed` | `number` | `50` | Затримка між символами в мілісекундах. |
+
+Ім'я героя не зберігається як налаштування і не показується в панелі налаштувань. Рушій питає його на початку гри, тримає в поточній сесії, застосовує до `protagonistCharacterId` і відправляє в API як окремий запис для БД.
 
 ## Формат даних
 
@@ -171,6 +195,8 @@ engine.reset();
   "id": 1,
   "type": "background",
   "image": "/media/backgrounds/library.webp",
+  "gallery": true,
+  "title": "Бібліотека",
   "options": {
     "opacity": 0.9,
     "objectFit": "cover",
@@ -180,6 +206,8 @@ engine.reset();
   "next": 2
 }
 ```
+
+Якщо у фонового вузла є `gallery: true`, `galleryId`, `gallery_id`, `unlockGallery` або `unlock_gallery`, рушій викликає `POST /gallery/unlock/` і передає `id`, `nodeId`, `image`, `title`, `chapter`. Після цього зображення можна показувати в галереї через `GET /gallery/`.
 
 ### Вузол `character`
 
@@ -350,6 +378,9 @@ engine.reset();
 | `GET /characters/:id/emotion/` | мапа емоцій | `changeEmotion()`. |
 | `GET /dialogues/?limit=50&offset=0` | репліки | Необов’язковий окремий список. |
 | `GET /nodes/?limit=50&offset=0` | вузли | `NodeManager.loadNodes()`. |
+| `GET /gallery/?limit=50&offset=0` | відкриті зображення | Галерея доступних фонів. |
+| `POST /gallery/unlock/` | запис відкриття | Викликається, коли гравець дійшов до позначеного фонового вузла. |
+| `POST /protagonist-names/` | ім'я героя | Викликається після стартового запиту імені; payload: `name`, `userAccountId`, `novelId`. |
 
 ### Повний мінімальний сценарій
 
