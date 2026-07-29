@@ -51,6 +51,7 @@ py -m unittest discover -s tests -p "*_test.py"
 | `background/BackgroundManager.js` | Встановлює фонове зображення. |
 | `character/` | Стан, DOM-рендеринг та емоції персонажів. |
 | `dialogue/` | Показ реплік і ефект друку. |
+| `sound/SoundManager.js` | Фонова музика, звукові ефекти, гучність і вимкнення аудіо. |
 | `choice/ChoiceManager.js` | Поточні варіанти вибору. |
 | `api/CharactersApi.js` | HTTP-клієнт контракту API. |
 | `tests/test_server.py` | Локальний Flask-сервер, генератор сценарію й статика. |
@@ -97,6 +98,11 @@ const engine = createEngine({
     characterContainerId: "characters",
     dialogueTargetId: "text",
     speakerNameTargetId: "name",
+    audio: {
+        volume: 1,
+        musicVolume: 0.8,
+        soundVolume: 1
+    },
     textSpeed: 25
 });
 
@@ -121,6 +127,12 @@ engine.reset();
 | `dialogueTargetId` | `string` | `"dialogue_text"` | ID елемента, де друкується текст. |
 | `speakerNameTargetId` | `string` | `"name"` | ID елемента, де показується ім'я мовця. |
 | `autoDeactivateOtherSpeakers` | `boolean` | `true` | Автоматично знімає активний стан з інших персонажів, коли починає говорити новий. |
+| `audio.enabled` | `boolean` | `true` | Глобально вмикає або вимикає весь звук. |
+| `audio.musicEnabled` | `boolean` | `true` | Дозволяє фонову музику. |
+| `audio.soundEnabled` | `boolean` | `true` | Дозволяє окремі звукові ефекти. |
+| `audio.volume` | `number` | `1` | Загальна гучність від `0` до `1`. |
+| `audio.musicVolume` | `number` | `1` | Гучність фонової музики від `0` до `1`. |
+| `audio.soundVolume` | `number` | `1` | Гучність звукових ефектів від `0` до `1`. |
 | `textSpeed` | `number` | `50` | Затримка між символами в мілісекундах. |
 
 ## Формат даних
@@ -230,6 +242,58 @@ engine.reset();
 }
 ```
 
+### Вузол `music`
+
+Керує фоновою музикою. Для музики `loop` типово дорівнює `true`.
+
+```json
+{
+  "id": 4,
+  "type": "music",
+  "src": "/media/audio/background.mp3",
+  "volume": 0.6,
+  "loop": true,
+  "next": 5
+}
+```
+
+```json
+{ "id": 8, "type": "music", "action": "stop", "next": 9 }
+```
+
+Доступні `action`: `play`, `pause`, `resume`, `stop`, `enable`, `disable`, `mute`, `unmute`.
+
+### Вузол `sound`
+
+Запускає окремий звуковий ефект. Якщо передати `soundId`, його можна зупинити пізніше.
+
+```json
+{
+  "id": 5,
+  "type": "sound",
+  "soundId": "door",
+  "src": "/media/audio/door.mp3",
+  "volume": 0.8,
+  "next": 6
+}
+```
+
+```json
+{ "id": 9, "type": "sound", "action": "stop", "soundId": "door", "next": 10 }
+```
+
+Вузол `audio` керує глобальними налаштуваннями:
+
+```json
+{
+  "id": 10,
+  "type": "audio",
+  "action": "disable",
+  "masterVolume": 0.5,
+  "next": 11
+}
+```
+
 ### Вузол `choice`
 
 Вузол не має `next`, бо перехід лежить у кожному варіанті.
@@ -257,6 +321,9 @@ engine.reset();
 | `background` | `image` | Змінює фон. |
 | `character` | `characterId` | Показує/оновлює персонажа або приховує його. |
 | `dialogue` | `dialogue.text` | Друкує репліку, позначає мовця. |
+| `music` | `src` або `action` | Вмикає, паузить, продовжує або зупиняє фонову музику. |
+| `sound` | `src` або `action` | Вмикає окремий звуковий ефект або зупиняє його за `soundId`. |
+| `audio` | `action` або гучність | Керує глобальним аудіо і гучністю каналів. |
 | `choice` | `choices[]` | Показує кнопки та чекає вибору. |
 
 У всіх вузлах `id` обов’язковий. `next` необов’язковий: якщо його немає, це кінець поточної гілки.
