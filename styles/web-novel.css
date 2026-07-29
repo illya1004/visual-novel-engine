@@ -1,0 +1,258 @@
+:root {
+    --wn-bg: #080b12;
+    --wn-ink: #f7f2e8;
+    --wn-muted: #c9d0dc;
+    --wn-accent: #c84f3d;
+    --wn-panel: rgba(8, 11, 18, 0.82);
+    --wn-panel-border: rgba(255, 255, 255, 0.18);
+    --wn-radius: 8px;
+    --wn-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
+    --wn-stage-aspect-ratio: 16 / 9;
+    --wn-stage-aspect-width: 16;
+    --wn-stage-aspect-height: 9;
+    --wn-dialogue-width: min(1120px, calc(100vw - 48px));
+    --wn-dialogue-side-width: min(560px, calc(100vw - 32px));
+    --wn-dialogue-bottom: clamp(16px, 4vh, 36px);
+    --wn-dialogue-pad: clamp(18px, 3vw, 34px);
+    --wn-text-size: clamp(18px, 2vw, 26px);
+    --wn-name-bg: var(--wn-accent);
+}
+
+.web-novel-page {
+    min-height: 100dvh;
+    margin: 0;
+    display: grid;
+    place-items: center;
+    background: var(--wn-bg);
+}
+
+.web-novel-root,
+#game {
+    position: relative;
+    min-height: 100dvh;
+    overflow: hidden;
+    background: var(--wn-bg);
+    color: var(--wn-ink);
+    font-family: Georgia, "Times New Roman", serif;
+}
+
+.web-novel-root[data-novel-fit="contain"],
+#game[data-novel-fit="contain"] {
+    width: min(100vw, calc(100dvh * var(--wn-stage-aspect-width) / var(--wn-stage-aspect-height)));
+    height: min(100dvh, calc(100vw * var(--wn-stage-aspect-height) / var(--wn-stage-aspect-width)));
+    min-height: auto;
+    aspect-ratio: var(--wn-stage-aspect-ratio);
+}
+
+.web-novel-root[data-novel-fit="fill"],
+#game[data-novel-fit="fill"] {
+    width: 100vw;
+    height: 100dvh;
+    min-height: auto;
+}
+
+.web-novel-root[data-novel-orientation="portrait"],
+#game[data-novel-orientation="portrait"] {
+    --wn-dialogue-width: min(720px, calc(100vw - 32px));
+    --wn-dialogue-side-width: min(420px, calc(100vw - 32px));
+    --wn-dialogue-bottom: clamp(12px, 2.5vh, 24px);
+    --wn-text-size: clamp(17px, 3.2vw, 23px);
+}
+
+.web-novel-background,
+#background,
+#background_image {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+}
+
+.web-novel-background img,
+#background img,
+#background_image img,
+#bg_img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.web-novel-characters,
+#characters,
+#character-container {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.character-slot {
+    will-change: opacity, transform, filter;
+}
+
+.character-slot.dim {
+    opacity: 0.65;
+    filter: brightness(0.65);
+}
+
+.character-slot.active {
+    opacity: 1;
+    filter: brightness(1);
+}
+
+.web-novel-dialogue,
+#dialogue {
+    position: absolute;
+    z-index: 5;
+    right: 24px;
+    bottom: var(--wn-dialogue-bottom);
+    left: 24px;
+    width: auto;
+    max-width: var(--wn-dialogue-custom-width, var(--wn-dialogue-width));
+    min-height: 150px;
+    margin-inline: auto;
+    padding: calc(var(--wn-dialogue-pad) + 12px) var(--wn-dialogue-pad) var(--wn-dialogue-pad);
+    border: 1px solid var(--wn-panel-border);
+    border-radius: var(--wn-radius);
+    background: var(--wn-panel);
+    box-shadow: var(--wn-shadow);
+    color: var(--wn-ink);
+    cursor: pointer;
+}
+
+.web-novel-dialogue--left,
+#dialogue.web-novel-dialogue--left,
+#dialogue[data-dialogue-position="left"] {
+    right: auto;
+    left: clamp(16px, 6vw, 72px);
+    width: var(--wn-dialogue-custom-width, var(--wn-dialogue-side-width));
+    max-width: calc(100vw - 32px);
+    margin-inline: 0;
+}
+
+.web-novel-dialogue--right,
+#dialogue.web-novel-dialogue--right,
+#dialogue[data-dialogue-position="right"] {
+    right: clamp(16px, 6vw, 72px);
+    left: auto;
+    width: var(--wn-dialogue-custom-width, var(--wn-dialogue-side-width));
+    max-width: calc(100vw - 32px);
+    margin-inline: 0;
+}
+
+.web-novel-dialogue--center,
+#dialogue.web-novel-dialogue--center,
+#dialogue[data-dialogue-position="center"] {
+    right: 50%;
+    left: auto;
+    width: var(--wn-dialogue-custom-width, min(760px, calc(100vw - 32px)));
+    max-width: calc(100vw - 32px);
+    transform: translateX(50%);
+}
+
+.web-novel-dialogue--full,
+#dialogue.web-novel-dialogue--full,
+#dialogue[data-dialogue-position="full"] {
+    width: auto;
+    max-width: var(--wn-dialogue-custom-width, var(--wn-dialogue-width));
+}
+
+.web-novel-speaker,
+#name {
+    position: absolute;
+    top: -18px;
+    left: 22px;
+    max-width: calc(100% - 44px);
+    padding: 8px 18px;
+    border-radius: var(--wn-radius);
+    background: var(--wn-name-bg);
+    color: #fff;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.web-novel-text,
+#text,
+#dialogue_text {
+    max-width: 100%;
+    font-size: var(--wn-text-size);
+    line-height: 1.55;
+}
+
+.web-novel-choices,
+#choices {
+    position: absolute;
+    z-index: 6;
+    right: 24px;
+    bottom: calc(var(--wn-dialogue-bottom) + 178px);
+    left: 24px;
+    display: grid;
+    gap: 10px;
+    max-width: 680px;
+    margin-inline: auto;
+}
+
+.web-novel-choice,
+.choice {
+    padding: 13px 16px;
+    border: 1px solid var(--wn-panel-border);
+    border-radius: var(--wn-radius);
+    background: var(--wn-panel);
+    color: var(--wn-ink);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.web-novel-choice:hover,
+.web-novel-choice:focus-visible,
+.choice:hover,
+.choice:focus-visible {
+    background: color-mix(in srgb, var(--wn-panel), var(--wn-accent) 22%);
+}
+
+[data-novel-ui="toolbar"] {
+    font-family: Georgia, "Times New Roman", serif;
+}
+
+.web-novel-toolbar {
+    align-items: center;
+}
+
+.web-novel-tool-button {
+    display: inline-grid;
+    place-items: center;
+    transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.web-novel-tool-button:hover,
+.web-novel-tool-button:focus-visible {
+    transform: translateY(-1px);
+}
+
+.web-novel-settings-panel {
+    backdrop-filter: blur(10px);
+}
+
+.web-novel-settings-panel label {
+    color: var(--wn-muted);
+}
+
+[data-novel-ui="settings"] input {
+    width: 100%;
+    accent-color: var(--wn-accent);
+}
+
+@media (max-width: 700px) {
+    .web-novel-dialogue,
+    #dialogue,
+    .web-novel-dialogue--left,
+    .web-novel-dialogue--right,
+    .web-novel-dialogue--center,
+    #dialogue[data-dialogue-position] {
+        right: 12px;
+        left: 12px;
+        width: auto;
+        max-width: none;
+        transform: none;
+    }
+}

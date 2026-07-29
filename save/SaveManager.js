@@ -3,6 +3,11 @@ export class SaveManager {
         this.enabled = options.enabled ?? true;
         this.storageKey = options.storageKey || "webNovel.save";
         this.storage = options.storage || this._getDefaultStorage();
+        this.autoSaveEnabled = options.autoSaveEnabled ?? options.auto_save_enabled ?? true;
+        this.autoSaveIntervalMs = Number(options.autoSaveIntervalMs ?? options.auto_save_interval_ms ?? 600000);
+        this.autoSaveTimer = null;
+        this.lastSave = null;
+        this.lastAutoSave = null;
         this.lastError = null;
     }
 
@@ -41,12 +46,14 @@ export class SaveManager {
         };
     }
 
-    save(engine) {
+    save(engine, options = {}) {
         const snapshot = this.createSnapshot(engine);
 
         if (!snapshot) {
             return null;
         }
+
+        snapshot.reason = options.reason ?? "manual";
 
         if (this.storage?.setItem) {
             try {
@@ -57,7 +64,42 @@ export class SaveManager {
             }
         }
 
+        this.lastSave = snapshot;
+
+        if (snapshot.reason === "auto") {
+            this.lastAutoSave = snapshot;
+        }
+
         return snapshot;
+    }
+
+    autoSave(engine) {
+        return this.save(engine, { reason: "auto" });
+    }
+
+    startAutoSave(engine) {
+        if (!this.enabled || !this.autoSaveEnabled || this.autoSaveTimer !== null || typeof setInterval === "undefined") {
+            return null;
+        }
+
+        const intervalMs = Number.isFinite(this.autoSaveIntervalMs) && this.autoSaveIntervalMs > 0
+            ? this.autoSaveIntervalMs
+            : 600000;
+
+        this.autoSaveTimer = setInterval(() => {
+            this.autoSave(engine);
+        }, intervalMs);
+
+        return this.autoSaveTimer;
+    }
+
+    stopAutoSave() {
+        if (this.autoSaveTimer === null || typeof clearInterval === "undefined") {
+            return;
+        }
+
+        clearInterval(this.autoSaveTimer);
+        this.autoSaveTimer = null;
     }
 
     load() {

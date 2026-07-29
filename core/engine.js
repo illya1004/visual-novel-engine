@@ -18,6 +18,7 @@ export class Engine {
 
     async start() {
         this.state.status = "loading";
+        this.viewport?.start?.();
         await this.settings?.promptForNovelStart?.();
         await this.characters?.loadCharacters?.();
         this.settings?.applyAll?.({
@@ -28,6 +29,7 @@ export class Engine {
         await this.nodeManager?.loadNodes?.();
 
         const node = await this.nodeManager?.start?.();
+        this.save?.startAutoSave?.(this);
         this._syncState(node);
         return node;
     }
@@ -93,6 +95,8 @@ export class Engine {
         this.choice?.clear?.();
         this.characters?.clearCharacters?.();
         this.sound?.stopAll?.();
+        this.save?.stopAutoSave?.();
+        this.viewport?.stop?.();
         this.state = {
             status: "idle",
             currentNodeId: null,

@@ -12,14 +12,26 @@ export class DialogueManager {
             || options.dialogueNameTargetId
             || options.dialogue_name_target_id
             || null;
+        this.boxTargetId = options.boxTargetId
+            || options.box_target_id
+            || options.dialogueBoxTargetId
+            || options.dialogue_box_target_id
+            || null;
         this.targetElement = options.targetElement || null;
         this.speakerNameElement = options.speakerNameElement || null;
+        this.boxElement = options.boxElement || null;
         this.typewriter = options.typewriter || null;
         this.typewriterSpeed = options.typewriterSpeed ?? 25;
         this.textSize = options.textSize ?? null;
+        this.defaultLayout = {
+            position: options.layout?.position ?? options.position ?? "full",
+            width: options.layout?.width ?? options.width ?? null
+        };
+        this.layout = { ...this.defaultLayout };
         this.typewriterSpeedMultiplier = options.typewriterSpeedMultiplier ?? 1;
         this._bindTargetElement();
         this.setTextSize(this.textSize);
+        this.setLayout(this.defaultLayout);
     }
 
     _bindTargetElement() {
@@ -30,6 +42,14 @@ export class DialogueManager {
         if (!this.speakerNameElement && this.speakerNameTargetId && typeof document !== "undefined") {
             this.speakerNameElement = document.getElementById(this.speakerNameTargetId);
         }
+
+        if (!this.boxElement && this.boxTargetId && typeof document !== "undefined") {
+            this.boxElement = document.getElementById(this.boxTargetId);
+        }
+
+        this.targetElement?.classList?.add?.("web-novel-text");
+        this.speakerNameElement?.classList?.add?.("web-novel-speaker");
+        this.boxElement?.classList?.add?.("web-novel-dialogue");
 
         if (!this.typewriter && this.targetElement) {
             this.typewriter = new Typewriter(this.targetElement, {
@@ -68,6 +88,44 @@ export class DialogueManager {
         this.targetElement.style.fontSize = typeof size === "number" ? `${size}px` : String(size);
     }
 
+    setLayout(layout = {}, fallbackLayout = this.defaultLayout) {
+        const position = layout?.position
+            ?? layout?.dialoguePosition
+            ?? layout?.dialogue_position
+            ?? fallbackLayout.position
+            ?? "full";
+        const width = layout?.width
+            ?? layout?.dialogueWidth
+            ?? layout?.dialogue_width
+            ?? fallbackLayout.width
+            ?? null;
+        this.layout = { position, width };
+
+        if (!this.boxElement) {
+            return;
+        }
+
+        const normalizedPosition = String(position).toLowerCase();
+        const safePosition = ["left", "right", "center", "full"].includes(normalizedPosition)
+            ? normalizedPosition
+            : "full";
+
+        this.boxElement.dataset.dialoguePosition = safePosition;
+        this.boxElement.classList?.remove?.(
+            "web-novel-dialogue--left",
+            "web-novel-dialogue--right",
+            "web-novel-dialogue--center",
+            "web-novel-dialogue--full"
+        );
+        this.boxElement.classList?.add?.(`web-novel-dialogue--${safePosition}`);
+
+        if (width) {
+            this.boxElement.style.setProperty("--wn-dialogue-custom-width", typeof width === "number" ? `${width}px` : String(width));
+        } else {
+            this.boxElement.style.removeProperty("--wn-dialogue-custom-width");
+        }
+    }
+
     async load() {
         if (!this.api?.getDialogues) {
             this.dialogues = [];
@@ -104,6 +162,10 @@ export class DialogueManager {
 
         this.currentDialogue = dialogueData;
         this.showSpeakerName(dialogueData);
+        this.setLayout({
+            position: dialogueData.dialoguePosition ?? dialogueData.dialogue_position ?? dialogueData.boxPosition ?? dialogueData.box_position,
+            width: dialogueData.dialogueWidth ?? dialogueData.dialogue_width ?? dialogueData.boxWidth ?? dialogueData.box_width
+        });
 
         if (this.typewriter) {
             await this.typewriter.write(dialogueData.text || "", this.typewriterSpeed);

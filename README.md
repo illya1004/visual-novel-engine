@@ -56,6 +56,8 @@ py -m unittest discover -s tests -p "*_test.py"
 | `save/SaveManager.js` | Ручне збереження поточного вузла, крім автоматичних `auto_next` / `skip_auto`. |
 | `gallery/GalleryManager.js` | Відкриття фонових зображень у галереї через API. |
 | `ui/InterfaceManager.js` | Кнопки налаштувань, збереження та ока для приховування інтерфейсу. |
+| `styles/web-novel.css` | Готові стилі з CSS-змінними для швидкого підключення рушія. |
+| `layout/ViewportManager.js` | Орієнтація сцени, aspect ratio та адаптація під горизонтальні/вертикальні новели. |
 | `choice/ChoiceManager.js` | Поточні варіанти вибору. |
 | `api/CharactersApi.js` | HTTP-клієнт контракту API. |
 | `tests/test_server.py` | Локальний Flask-сервер, генератор сценарію й статика. |
@@ -88,9 +90,15 @@ background → character → dialogue → choice
 На сторінці мають бути щонайменше три DOM-елементи: фон, шар персонажів і елемент для тексту.
 
 ```html
-<div id="background"></div>
-<div id="characters"></div>
-<div id="text"></div>
+<link rel="stylesheet" href="./styles/web-novel.css">
+<main id="game">
+  <div id="background"></div>
+  <div id="characters"></div>
+  <section id="dialogue">
+    <div id="name"></div>
+    <div id="text"></div>
+  </section>
+</main>
 ```
 
 ```js
@@ -98,10 +106,21 @@ import { createEngine } from "./main.js";
 
 const engine = createEngine({
     apiBaseUrl: "/api",
+    viewport: {
+        orientation: "landscape",
+        landscapeAspectRatio: "16 / 9",
+        portraitAspectRatio: "9 / 16",
+        fit: "contain"
+    },
     target_id: "background",
     characterContainerId: "characters",
     dialogueTargetId: "text",
     speakerNameTargetId: "name",
+    dialogueBoxTargetId: "dialogue",
+    dialogueLayout: {
+        position: "right",
+        width: "34rem"
+    },
     audio: {
         volume: 1,
         musicVolume: 0.8,
@@ -137,10 +156,18 @@ engine.reset();
 | --- | --- | --- | --- |
 | `apiBaseUrl` | `string` | `""` | Префікс API, наприклад `"/api"` або `"https://api.example.com"`. |
 | `charactersApi` | об’єкт | `null` | Власна реалізація API замість HTTP-клієнта. Корисно для тестів. |
+| `viewport.rootTargetId` | `string` | `"game"` | ID кореневого екрана новели, якому рушій ставить класи та `data-*` для layout. |
+| `viewport.orientation` | `landscape \| portrait \| auto` | `"landscape"` | Орієнтація сцени: горизонтальна, вертикальна або автоматична за розміром вікна. |
+| `viewport.landscapeAspectRatio` | `string` | `"16 / 9"` | Співвідношення сторін для горизонтальної новели. |
+| `viewport.portraitAspectRatio` | `string` | `"9 / 16"` | Співвідношення сторін для вертикальної новели. |
+| `viewport.fit` | `contain \| fill` | `"contain"` | `contain` зберігає пропорції сцени з полями, `fill` розтягує на весь viewport. |
 | `target_id` / `targetId` | `string` | `"background_image"` | ID контейнера фону. |
 | `characterContainerId` | `string` | `"characters"` | ID шару персонажів. |
 | `dialogueTargetId` | `string` | `"dialogue_text"` | ID елемента, де друкується текст. |
 | `speakerNameTargetId` | `string` | `"name"` | ID елемента, де показується ім'я мовця. |
+| `dialogueBoxTargetId` | `string` | `"dialogue"` | ID контейнера діалогового блоку. |
+| `dialogueLayout.position` | `full \| left \| right \| center` | `"full"` | Розташування діалогового блоку: на всю нижню частину або частково збоку. |
+| `dialogueLayout.width` | `number \| string` | `null` | Ширина бокового/центрального діалогового блоку. |
 | `autoDeactivateOtherSpeakers` | `boolean` | `true` | Автоматично знімає активний стан з інших персонажів, коли починає говорити новий. |
 | `audio.enabled` | `boolean` | `true` | Глобально вмикає або вимикає весь звук. |
 | `audio.musicEnabled` | `boolean` | `true` | Дозволяє фонову музику. |
@@ -154,6 +181,8 @@ engine.reset();
 | `settings.novelId` | `number \| string` | `null` | Новела, до якої прив'язане введене ім'я героя. |
 | `settings.textSize` | `number \| string` | `null` | Розмір тексту діалогу, наприклад `22` або `"1.3rem"`. |
 | `save.enabled` | `boolean` | `true` | Дозволяє кнопку та API ручного збереження. |
+| `save.autoSaveEnabled` | `boolean` | `true` | Вмикає автозбереження. |
+| `save.autoSaveIntervalMs` | `number` | `600000` | Інтервал автозбереження; типово 10 хвилин. |
 | `interface.autoCreateControls` | `boolean` | `true` | Автоматично створює кнопки налаштувань, збереження та ока. |
 | `textSpeed` | `number` | `50` | Затримка між символами в мілісекундах. |
 
@@ -251,11 +280,29 @@ engine.reset();
   "type": "dialogue",
   "dialogue": {
     "characterId": 1,
+    "dialoguePosition": "left",
+    "dialogueWidth": "32rem",
     "text": "Я знайшла лист. Треба вирішити, що робити далі."
   },
   "next": 4
 }
 ```
+
+`dialoguePosition` і `dialogueWidth` можна задавати глобально через `dialogueLayout`, або окремо для конкретної репліки. Так одна новела може мати класичний нижній блок, а інша - компактний блок праворуч чи ліворуч.
+
+Готовий файл `styles/web-novel.css` можна підключити напряму або перевизначити його CSS-змінні у стилях конкретної новели:
+
+```css
+:root {
+    --wn-accent: #9f5f3a;
+    --wn-stage-aspect-ratio: 16 / 9;
+    --wn-dialogue-width: 36rem;
+    --wn-dialogue-side-width: 30rem;
+    --wn-text-size: 22px;
+}
+```
+
+Для вертикальної новели достатньо передати `viewport: { orientation: "portrait" }`. Для адаптивного режиму використовуйте `orientation: "auto"`; рушій сам перемикатиме `data-novel-orientation` між `landscape` та `portrait`.
 
 Для репліки без персонажа не передавайте `characterId`; додайте `speakerName`, якщо UI показує ім’я мовця.
 
@@ -342,6 +389,21 @@ engine.reset();
 | `label` | Текст кнопки. |
 | `nextNodeId` | ID вузла, що виконається після вибору. Допускається також коротке поле `next`. |
 
+### Вузол `viewport`
+
+Змінює орієнтацію сцени під час сценарію. Зазвичай це налаштовується один раз у `createEngine`, але вузол корисний для окремих спеціальних сцен.
+
+```json
+{
+  "id": 11,
+  "type": "viewport",
+  "orientation": "portrait",
+  "aspectRatio": "9 / 16",
+  "fit": "contain",
+  "next": 12
+}
+```
+
 ### Зведена таблиця вузлів
 
 | `type` | Обов’язкові дані | Результат |
@@ -353,6 +415,7 @@ engine.reset();
 | `sound` | `src` або `action` | Вмикає окремий звуковий ефект або зупиняє його за `soundId`. |
 | `audio` | `action` або гучність | Керує глобальним аудіо і гучністю каналів. |
 | `choice` | `choices[]` | Показує кнопки та чекає вибору. |
+| `viewport` / `layout` / `orientation` | `orientation` | Змінює орієнтацію та aspect ratio сцени. |
 
 У всіх вузлах `id` обов’язковий. `next` необов’язковий: якщо його немає, це кінець поточної гілки.
 
