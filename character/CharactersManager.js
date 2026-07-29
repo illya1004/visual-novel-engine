@@ -29,6 +29,10 @@ export class CharactersManager {
         this.states = {};
         this.characterSlots = new Map();
         this.speakingCharacterId = null;
+        this.autoDeactivateOtherSpeakers = htmlElements.autoDeactivateOtherSpeakers
+            ?? htmlElements.autoDeactivateOtherCharacters
+            ?? htmlElements.singleActiveSpeaker
+            ?? true;
         this.renderer = new CharacterRenderer(this.htmlElements, this.characterSlots);
     }
 
@@ -79,7 +83,11 @@ export class CharactersManager {
             }
         }
 
-        if (!activeSpeakerId) {
+        if (activeSpeakerId && this.autoDeactivateOtherSpeakers) {
+            for (const character of this.characters) {
+                this.getState(character.id).setSpeaking(String(character.id) === String(activeSpeakerId));
+            }
+        } else if (!activeSpeakerId) {
             for (const state of Object.values(this.states)) {
                 state.setSpeaking(false);
             }
@@ -103,7 +111,11 @@ export class CharactersManager {
     }
 
     getCharacterById(id) {
-        return this.characters.find(character => character.id === id);
+        if (id === null || id === undefined) {
+            return null;
+        }
+
+        return this.characters.find(character => String(character.id) === String(id)) ?? null;
     }
 
     getCharacterEmotion(id) {
@@ -120,6 +132,7 @@ export class CharactersManager {
 
         this.renderer.setActiveCharacter(this.speakingCharacterId);
         this.renderer.render(state, character);
+
         return state;
     }
 
@@ -135,6 +148,13 @@ export class CharactersManager {
 
     setSpeakingCharacter(characterId, options = {}) {
         const nextCharacterId = characterId ?? options.characterId ?? null;
+        const shouldSpeak = options?.speaking !== undefined
+            ? Boolean(options.speaking)
+            : true;
+        const autoDeactivateOtherSpeakers = options?.autoDeactivateOtherSpeakers
+            ?? options?.autoDeactivateOtherCharacters
+            ?? options?.singleActiveSpeaker
+            ?? this.autoDeactivateOtherSpeakers;
 
         if (nextCharacterId === null || nextCharacterId === undefined) {
             for (const state of Object.values(this.states)) {
@@ -145,20 +165,21 @@ export class CharactersManager {
             return null;
         }
 
-        this.speakingCharacterId = nextCharacterId;
         const state = this.getState(nextCharacterId);
         state.show();
+        state.setSpeaking(shouldSpeak);
 
-        if (options?.speaking !== undefined) {
-            state.setSpeaking(Boolean(options.speaking));
-        }
-        else {
-            state.setSpeaking(true);
+        if (shouldSpeak) {
+            this.speakingCharacterId = nextCharacterId;
+        } else if (String(this.speakingCharacterId) === String(nextCharacterId)) {
+            this.speakingCharacterId = null;
         }
 
-        for (const [characterIdKey, otherState] of Object.entries(this.states)) {
-            if (String(characterIdKey) !== String(nextCharacterId)) {
-                otherState.setSpeaking(false);
+        if (autoDeactivateOtherSpeakers) {
+            for (const [characterIdKey, otherState] of Object.entries(this.states)) {
+                if (String(characterIdKey) !== String(nextCharacterId)) {
+                    otherState.setSpeaking(false);
+                }
             }
         }
 
@@ -180,17 +201,25 @@ export class CharactersManager {
         state.setImage(character.image);
         state.setPosition(position);
 
-        const shouldSpeak = this._getCharacterSpeakingFlag(character, { speaking: options?.speaking ?? options?.isSpeaking ?? options?.is_speaking ?? null });
+        const hasSpeakingOption = options?.speaking !== undefined
+            || options?.isSpeaking !== undefined
+            || options?.is_speaking !== undefined;
+        const shouldSpeak = this._getCharacterSpeakingFlag(character, {
+            speaking: options?.speaking ?? options?.isSpeaking ?? options?.is_speaking ?? null
+        });
 
-        if (options?.speaking !== undefined) {
-            this.setSpeakingCharacter(id, options);
+        if (hasSpeakingOption || shouldSpeak) {
+            this.setSpeakingCharacter(id, {
+                ...options,
+                speaking: shouldSpeak
+            });
         }
 
         this.renderer.setActiveCharacter(this.speakingCharacterId);
         const rendered = this.renderer.render(state, character, style);
 
         if (rendered?.slotElement && rendered.slotElement.classList) {
-            const isActive = this.speakingCharacterId === id;
+            const isActive = state.speaking;
             rendered.slotElement.classList.toggle("active", isActive);
             rendered.slotElement.classList.toggle("dim", !isActive);
         }
@@ -202,11 +231,13 @@ export class CharactersManager {
         const characterId = dialogue?.characterId ?? dialogue?.character_id ?? null;
 
         if (characterId === null || characterId === undefined) {
+            this.setSpeakingCharacter(null);
             return null;
         }
 
         const character = this.getCharacterById(characterId);
         if (!character) {
+            this.setSpeakingCharacter(null);
             return null;
         }
 
@@ -227,16 +258,11 @@ export class CharactersManager {
         state.hide();
         this.renderer.render(state, this.getCharacterById(id));
 
-        if (this.speakingCharacterId === id) {
-            const nextSpeakerId = Object.keys(this.states).find(characterId => this.states[characterId].visible) ?? null;
-            this.speakingCharacterId = nextSpeakerId;
-            if (nextSpeakerId) {
-                this.setSpeakingCharacter(nextSpeakerId);
-            } else {
-                this.refreshCharacterDisplay();
-            }
+        if (String(this.speakingCharacterId) === String(id)) {
+            this.speakingCharacterId = null;
         }
 
+        this.refreshCharacterDisplay();
         return state;
     }
 

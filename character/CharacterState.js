@@ -24,6 +24,7 @@ export class CharacterState {
 
     hide() {
         this.visible = false;
+        this.speaking = false;
     }
 
     setPosition(position) {

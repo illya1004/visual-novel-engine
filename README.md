@@ -96,6 +96,7 @@ const engine = createEngine({
     target_id: "background",
     characterContainerId: "characters",
     dialogueTargetId: "text",
+    speakerNameTargetId: "name",
     textSpeed: 25
 });
 
@@ -118,6 +119,8 @@ engine.reset();
 | `target_id` / `targetId` | `string` | `"background_image"` | ID контейнера фону. |
 | `characterContainerId` | `string` | `"characters"` | ID шару персонажів. |
 | `dialogueTargetId` | `string` | `"dialogue_text"` | ID елемента, де друкується текст. |
+| `speakerNameTargetId` | `string` | `"name"` | ID елемента, де показується ім'я мовця. |
+| `autoDeactivateOtherSpeakers` | `boolean` | `true` | Автоматично знімає активний стан з інших персонажів, коли починає говорити новий. |
 | `textSpeed` | `number` | `50` | Затримка між символами в мілісекундах. |
 
 ## Формат даних

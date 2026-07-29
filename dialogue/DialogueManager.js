@@ -7,7 +7,13 @@ export class DialogueManager {
         this.currentIndex = 0;
         this.currentDialogue = null;
         this.target_id = options.target_id || options.targetId || null;
+        this.speakerNameTargetId = options.speakerNameTargetId
+            || options.speaker_name_target_id
+            || options.dialogueNameTargetId
+            || options.dialogue_name_target_id
+            || null;
         this.targetElement = options.targetElement || null;
+        this.speakerNameElement = options.speakerNameElement || null;
         this.typewriter = options.typewriter || null;
         this.typewriterSpeed = options.typewriterSpeed ?? 25;
         this.typewriterSpeedMultiplier = options.typewriterSpeedMultiplier ?? 1;
@@ -19,11 +25,27 @@ export class DialogueManager {
             this.targetElement = document.getElementById(this.target_id);
         }
 
+        if (!this.speakerNameElement && this.speakerNameTargetId && typeof document !== "undefined") {
+            this.speakerNameElement = document.getElementById(this.speakerNameTargetId);
+        }
+
         if (!this.typewriter && this.targetElement) {
             this.typewriter = new Typewriter(this.targetElement, {
                 speedMultiplier: this.typewriterSpeedMultiplier
             });
         }
+    }
+
+    getSpeakerName(dialogue) {
+        return dialogue?.speakerName ?? dialogue?.speaker_name ?? "";
+    }
+
+    showSpeakerName(dialogue) {
+        if (!this.speakerNameElement) {
+            return;
+        }
+
+        this.speakerNameElement.textContent = this.getSpeakerName(dialogue);
     }
 
     async load() {
@@ -61,6 +83,7 @@ export class DialogueManager {
         }
 
         this.currentDialogue = dialogueData;
+        this.showSpeakerName(dialogueData);
 
         if (this.typewriter) {
             await this.typewriter.write(dialogueData.text || "", this.typewriterSpeed);

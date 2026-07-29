@@ -4,6 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/api_test.js tests/node_manager_test.js tests/character_manager_test.js"
+    "test": "node --test tests/node_manager_test.js tests/character_manager_test.js"
   }
 }

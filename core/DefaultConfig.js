@@ -5,7 +5,16 @@ export class Config {
         this.language = options.language ?? "uk";
         this.target_id = options.target_id ?? options.targetId ?? "background_image";
         this.dialogueTargetId = options.dialogueTargetId ?? options.dialogue_target_id ?? "dialogue_text";
+        this.speakerNameTargetId = options.speakerNameTargetId
+            ?? options.speaker_name_target_id
+            ?? options.dialogueNameTargetId
+            ?? options.dialogue_name_target_id
+            ?? "name";
         this.characterContainerId = options.characterContainerId ?? options.character_container_id ?? "characters";
+        this.autoDeactivateOtherSpeakers = options.autoDeactivateOtherSpeakers
+            ?? options.autoDeactivateOtherCharacters
+            ?? options.singleActiveSpeaker
+            ?? true;
         this.apiBaseUrl = options.apiBaseUrl ?? options.api_base_url ?? "";
         this.charactersApi = options.charactersApi ?? null;
 

@@ -16,11 +16,13 @@ export function createEngine(options = {}) {
 
     engine.characters = new CharactersManager(api, {
         container_id: config.characterContainerId,
-        target_id: config.target_id
+        target_id: config.target_id,
+        autoDeactivateOtherSpeakers: config.autoDeactivateOtherSpeakers
     });
     engine.background = new BackgroundManager(config);
     engine.dialogue = new DialogueManager(api, {
         target_id: config.dialogueTargetId,
+        speakerNameTargetId: config.speakerNameTargetId,
         typewriterSpeed: config.textSpeed
     });
     engine.choice = new ChoiceManager();

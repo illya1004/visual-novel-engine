@@ -98,7 +98,6 @@ export class NodeManager {
         }
 
         const targetNode = this.get(nextNodeId);
-        console.log(`Next node: ${nextNodeId}`, targetNode);
         if (!targetNode) {
             return null;
         }
@@ -185,14 +184,34 @@ export class NodeManager {
     }
 
     async handleDialogueNode(node) {
-        const dialogue = node.dialogue || node.data || { text: node.text || "" };
-
-        if (this.dialogueManager?.show) {
-            await this.dialogueManager.show(dialogue);
-        }
+        const dialogue = node.dialogue || node.data || {
+            text: node.text || "",
+            characterId: node.characterId ?? node.character_id,
+            speakerName: node.speakerName ?? node.speaker_name,
+            speaking: node.speaking ?? node.isSpeaking ?? node.is_speaking
+        };
+        let speakerCharacter = null;
 
         if (this.charactersManager?.showDialogueCharacter) {
-            this.charactersManager.showDialogueCharacter(dialogue);
+            speakerCharacter = this.charactersManager.showDialogueCharacter(dialogue);
+        }
+
+        const dialogueToShow = dialogue && typeof dialogue === "object"
+            ? { ...dialogue }
+            : dialogue;
+
+        if (
+            dialogueToShow
+            && typeof dialogueToShow === "object"
+            && dialogueToShow.speakerName === undefined
+            && dialogueToShow.speaker_name === undefined
+            && speakerCharacter?.name
+        ) {
+            dialogueToShow.speakerName = speakerCharacter.name;
+        }
+
+        if (this.dialogueManager?.show) {
+            await this.dialogueManager.show(dialogueToShow);
         }
 
         return node;
@@ -210,15 +229,32 @@ export class NodeManager {
         }
 
         if (this.charactersManager?.showCharacter) {
-            this.charactersManager.showCharacter(characterId, node.position || 'center', node.style || {}, { speaking: speakingOption });
+            const options = {};
+
+            if (speakingOption !== null) {
+                options.speaking = speakingOption;
+            }
+
+            this.charactersManager.showCharacter(
+                characterId,
+                node.position || 'center',
+                node.style || {},
+                options
+            );
         }
 
         if (node.emotion && this.charactersManager?.changeEmotion) {
             await this.charactersManager.changeEmotion(characterId, node.emotion);
         }
 
-        if (this.charactersManager?.setSpeakingCharacter && characterId) {
-            this.charactersManager.setSpeakingCharacter(characterId, { speaking: speakingOption });
+        if (
+            speakingOption === true &&
+            this.charactersManager?.setSpeakingCharacter &&
+            characterId
+        ) {
+            this.charactersManager.setSpeakingCharacter(characterId, {
+                speaking: true
+            });
         }
 
         return node;
