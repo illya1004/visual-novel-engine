@@ -7,6 +7,7 @@ export class NodeManager {
         this.dialogueManager = managers.dialogueManager || api?.dialogueManager || null;
         this.backgroundManager = managers.backgroundManager || api?.backgroundManager || null;
         this.charactersManager = managers.charactersManager || api?.charactersManager || null;
+        this.soundManager = managers.soundManager || api?.soundManager || null;
         this.choiceManager = managers.choiceManager || api?.choiceManager || null;
         this.transitionLogger = managers.transitionLogger || api?.transitionLogger || null;
         this._lastChoiceNode = null;
@@ -160,6 +161,11 @@ export class NodeManager {
             case 'character':
                 result = await this.handleCharacterNode(node);
                 break;
+            case 'music':
+            case 'sound':
+            case 'audio':
+                result = await this.handleSoundNode(node);
+                break;
             case 'choice':
                 result = await this.handleChoiceNode(node);
                 break;
@@ -178,6 +184,152 @@ export class NodeManager {
             await this.backgroundManager.showBackground(node.image, node.options || {});
         } else if (this.backgroundManager?.ShowBackground) {
             await this.backgroundManager.ShowBackground(node.image, node.options || {});
+        }
+
+        return node;
+    }
+
+    _getSoundSource(node = {}) {
+        return node.src ?? node.source ?? node.url ?? node.audio ?? node.sound ?? node.music ?? node.file ?? null;
+    }
+
+    _getSoundAction(node = {}) {
+        if (node.action) {
+            return String(node.action).toLowerCase();
+        }
+
+        if (node.stop === true) {
+            return 'stop';
+        }
+
+        if (node.pause === true) {
+            return 'pause';
+        }
+
+        if (node.resume === true) {
+            return 'resume';
+        }
+
+        if (node.enabled !== undefined) {
+            return node.enabled ? 'enable' : 'disable';
+        }
+
+        return 'play';
+    }
+
+    _getSoundChannel(node = {}) {
+        const channel = node.channel ?? node.kind ?? node.audioType ?? node.audio_type ?? node.type;
+
+        if (channel === 'master' || channel === 'global' || channel === 'all' || channel === 'audio') {
+            return 'all';
+        }
+
+        if (channel === 'bgm' || channel === 'backgroundMusic' || channel === 'background_music') {
+            return 'music';
+        }
+
+        if (channel === 'effect' || channel === 'effects' || channel === 'sfx') {
+            return 'sound';
+        }
+
+        return channel === 'music' ? 'music' : 'sound';
+    }
+
+    async handleSoundNode(node) {
+        if (!this.soundManager) {
+            return node;
+        }
+
+        const action = this._getSoundAction(node);
+        const channel = this._getSoundChannel(node);
+        const source = this._getSoundSource(node);
+        const soundId = node.soundId ?? node.sound_id ?? null;
+        const options = {
+            id: soundId ?? node.id,
+            soundId: soundId ?? node.id,
+            volume: node.volume,
+            loop: node.loop,
+            restart: node.restart,
+            currentTime: node.currentTime ?? node.current_time,
+            startTime: node.startTime ?? node.start_time
+        };
+
+        if (node.masterVolume !== undefined || node.master_volume !== undefined) {
+            this.soundManager.setMasterVolume?.(node.masterVolume ?? node.master_volume);
+        }
+
+        if (node.musicVolume !== undefined || node.music_volume !== undefined) {
+            this.soundManager.setMusicVolume?.(node.musicVolume ?? node.music_volume);
+        }
+
+        if (node.soundVolume !== undefined || node.sound_volume !== undefined || node.effectsVolume !== undefined || node.effects_volume !== undefined) {
+            this.soundManager.setSoundVolume?.(node.soundVolume ?? node.sound_volume ?? node.effectsVolume ?? node.effects_volume);
+        }
+
+        switch (action) {
+            case 'enable':
+            case 'on':
+                if (channel === 'music') {
+                    this.soundManager.setMusicEnabled?.(true);
+                } else if (channel === 'sound') {
+                    this.soundManager.setSoundEnabled?.(true);
+                } else {
+                    this.soundManager.setEnabled?.(true);
+                }
+                break;
+            case 'disable':
+            case 'off':
+            case 'mute':
+                if (channel === 'music') {
+                    this.soundManager.setMusicEnabled?.(false);
+                } else if (channel === 'sound') {
+                    this.soundManager.setSoundEnabled?.(false);
+                } else {
+                    this.soundManager.setEnabled?.(false);
+                }
+                break;
+            case 'unmute':
+                if (channel === 'music') {
+                    this.soundManager.setMusicEnabled?.(true);
+                } else if (channel === 'sound') {
+                    this.soundManager.setSoundEnabled?.(true);
+                } else {
+                    this.soundManager.setEnabled?.(true);
+                }
+                break;
+            case 'pause':
+                if (channel === 'music') {
+                    this.soundManager.pauseMusic?.();
+                }
+                break;
+            case 'resume':
+                if (channel === 'music') {
+                    await this.soundManager.resumeMusic?.();
+                }
+                break;
+            case 'stop':
+                if (channel === 'music') {
+                    this.soundManager.stopMusic?.();
+                } else if (channel === 'all') {
+                    this.soundManager.stopAll?.();
+                } else if (soundId !== undefined && soundId !== null) {
+                    this.soundManager.stopSound?.(soundId);
+                } else {
+                    this.soundManager.stopAllSounds?.();
+                }
+                break;
+            case 'stop_all':
+            case 'stopall':
+                this.soundManager.stopAll?.();
+                break;
+            case 'play':
+            default:
+                if (channel === 'music') {
+                    await this.soundManager.playMusic?.(source, options);
+                } else {
+                    await this.soundManager.playSound?.(source, options);
+                }
+                break;
         }
 
         return node;

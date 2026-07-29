@@ -19,7 +19,13 @@ export class Config {
         this.charactersApi = options.charactersApi ?? null;
 
         this.audio = {
-            volume: options.audio?.volume ?? 1
+            enabled: options.audio?.enabled ?? options.audioEnabled ?? true,
+            musicEnabled: options.audio?.musicEnabled ?? options.musicEnabled ?? true,
+            soundEnabled: options.audio?.soundEnabled ?? options.soundEnabled ?? options.effectsEnabled ?? true,
+            volume: options.audio?.volume ?? options.audio?.masterVolume ?? options.volume ?? 1,
+            musicVolume: options.audio?.musicVolume ?? options.musicVolume ?? 1,
+            soundVolume: options.audio?.soundVolume ?? options.audio?.effectsVolume ?? options.soundVolume ?? options.effectsVolume ?? 1,
+            audioFactory: options.audio?.audioFactory ?? options.audioFactory ?? null
         };
 
         this.save = {

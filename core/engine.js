@@ -42,6 +42,7 @@ export class Engine {
         this.dialogue?.cancel?.();
         this.choice?.clear?.();
         this.characters?.clearCharacters?.();
+        this.sound?.stopAll?.();
         this.state = {
             status: "idle",
             currentNodeId: null,
