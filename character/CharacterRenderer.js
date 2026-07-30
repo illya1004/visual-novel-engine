@@ -16,6 +16,7 @@ export class CharacterRenderer {
             idleOpacity: 0.65,
             speakScale: 1.15,
             idleScale: 1,
+            showCharacterNames: false,
             ...config
         };
         this.activeCharacterId = null;
@@ -125,14 +126,19 @@ export class CharacterRenderer {
         imgElement.style.height = "auto";
         imgElement.style.objectFit = "contain";
 
-        const nameElement = document.createElement("div");
-        nameElement.style.marginTop = "8px";
-        nameElement.style.textAlign = "center";
-        nameElement.style.color = "#fff";
-        nameElement.style.textShadow = "0 0 6px rgba(0, 0, 0, 0.8)";
+        let nameElement = null;
 
         slotElement.appendChild(imgElement);
-        slotElement.appendChild(nameElement);
+
+        if (this.config.showCharacterNames) {
+            nameElement = document.createElement("div");
+            nameElement.style.marginTop = "8px";
+            nameElement.style.textAlign = "center";
+            nameElement.style.color = "#fff";
+            nameElement.style.textShadow = "0 0 6px rgba(0, 0, 0, 0.8)";
+            slotElement.appendChild(nameElement);
+        }
+
         container.appendChild(slotElement);
 
         const createdSlot = { slotElement, imgElement, nameElement };
@@ -164,7 +170,7 @@ export class CharacterRenderer {
             slot.imgElement.style.visibility = "visible";
         }
 
-        if (slot.nameElement) {
+        if (slot.nameElement && this.config.showCharacterNames) {
             slot.nameElement.style.opacity = String(opacity);
         }
 
@@ -194,8 +200,12 @@ export class CharacterRenderer {
             slot.imgElement.src = imageUrl;
         }
 
-        if (slot.nameElement) {
+        if (slot.nameElement && this.config.showCharacterNames) {
             slot.nameElement.textContent = displayName;
+            slot.nameElement.style.display = "block";
+        } else if (slot.nameElement) {
+            slot.nameElement.textContent = "";
+            slot.nameElement.style.display = "none";
         }
 
         slot.slotElement.style.display = "block";

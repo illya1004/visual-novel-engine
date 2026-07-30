@@ -200,6 +200,46 @@ export class NodeManager {
         return node;
     }
 
+    _getDialogueControlFields(node = {}) {
+        return {
+            clearSpeaking: node.clearSpeaking ?? node.clear_speaking,
+            clearSpeaker: node.clearSpeaker ?? node.clear_speaker,
+            clearActiveSpeaker: node.clearActiveSpeaker ?? node.clear_active_speaker,
+            deactivateSpeakers: node.deactivateSpeakers ?? node.deactivate_speakers,
+            deactivateCharacters: node.deactivateCharacters ?? node.deactivate_characters,
+            preserveSpeaker: node.preserveSpeaker ?? node.preserve_speaker,
+            keepSpeaker: node.keepSpeaker ?? node.keep_speaker,
+            keepCharactersActive: node.keepCharactersActive ?? node.keep_characters_active
+        };
+    }
+
+    getDialogueData(node = {}) {
+        const topLevelDialogue = {
+            text: node.text || "",
+            characterId: node.characterId ?? node.character_id,
+            speakerName: node.speakerName ?? node.speaker_name,
+            speaking: node.speaking ?? node.isSpeaking ?? node.is_speaking,
+            ...this._getDialogueControlFields(node)
+        };
+        const dialogueSource = node.dialogue ?? node.data ?? null;
+
+        if (dialogueSource && typeof dialogueSource === "object") {
+            return {
+                ...topLevelDialogue,
+                ...dialogueSource
+            };
+        }
+
+        if (typeof dialogueSource === "string") {
+            return {
+                ...topLevelDialogue,
+                text: dialogueSource
+            };
+        }
+
+        return topLevelDialogue;
+    }
+
     _getSoundSource(node = {}) {
         return node.src ?? node.source ?? node.url ?? node.audio ?? node.sound ?? node.music ?? node.file ?? null;
     }
@@ -347,12 +387,7 @@ export class NodeManager {
     }
 
     async handleDialogueNode(node) {
-        const dialogue = node.dialogue || node.data || {
-            text: node.text || "",
-            characterId: node.characterId ?? node.character_id,
-            speakerName: node.speakerName ?? node.speaker_name,
-            speaking: node.speaking ?? node.isSpeaking ?? node.is_speaking
-        };
+        const dialogue = this.getDialogueData(node);
         let speakerCharacter = null;
 
         if (this.charactersManager?.showDialogueCharacter) {
@@ -385,8 +420,19 @@ export class NodeManager {
     async handleCharacterNode(node) {
         const characterId = node.characterId ?? node.character_id;
         const speakingOption = node.speaking ?? node.isSpeaking ?? node.is_speaking ?? null;
+        const action = typeof node.action === "string" ? node.action.toLowerCase() : node.action;
+        const resetEmotionAction = [
+            "resetemotion",
+            "reset_emotion",
+            "emotion_reset",
+            "default_emotion"
+        ].includes(action);
+        const hasEmotionField = Object.prototype.hasOwnProperty.call(node, "emotion");
+        const resetEmotion = node.resetEmotion
+            ?? node.reset_emotion
+            ?? (resetEmotionAction || (hasEmotionField && node.emotion === null));
 
-        if (node.visible === false || node.action === 'hide') {
+        if (node.visible === false || action === 'hide') {
             if (this.charactersManager?.hideCharacter) {
                 this.charactersManager.hideCharacter(characterId);
             }
@@ -398,6 +444,10 @@ export class NodeManager {
 
             if (speakingOption !== null) {
                 options.speaking = speakingOption;
+            }
+
+            if (resetEmotion !== false) {
+                options.resetEmotion = resetEmotion;
             }
 
             this.charactersManager.showCharacter(

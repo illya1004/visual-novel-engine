@@ -4,6 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/node_manager_test.js tests/character_manager_test.js sound/SoundManager.test.js settings/SettingsManager.test.js save/SaveManager.test.js gallery/GalleryManager.test.js dialogue/DialogueManager.test.js layout/ViewportManager.test.js"
+    "test": "node --test tests/node_manager_test.js tests/character_manager_test.js node/NodeManager.test.js character/CharactersManager.test.js background/BackgroundManager.test.js sound/SoundManager.test.js settings/SettingsManager.test.js save/SaveManager.test.js gallery/GalleryManager.test.js dialogue/DialogueManager.test.js layout/ViewportManager.test.js"
   }
 }

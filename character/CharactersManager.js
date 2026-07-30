@@ -29,11 +29,111 @@ export class CharactersManager {
         this.states = {};
         this.characterSlots = new Map();
         this.speakingCharacterId = null;
+        this.showCharacterNames = this._coerceBooleanFlag(
+            htmlElements.showCharacterNames
+                ?? htmlElements.show_character_names
+                ?? htmlElements.displayCharacterNames
+                ?? htmlElements.display_character_names,
+            false
+        );
         this.autoDeactivateOtherSpeakers = htmlElements.autoDeactivateOtherSpeakers
             ?? htmlElements.autoDeactivateOtherCharacters
             ?? htmlElements.singleActiveSpeaker
             ?? true;
-        this.renderer = new CharacterRenderer(this.htmlElements, this.characterSlots);
+        const preserveSpeakerOnNarration = htmlElements.preserveSpeakerOnNarration
+            ?? htmlElements.preserve_speaker_on_narration
+            ?? htmlElements.keepSpeakerOnNarration
+            ?? htmlElements.keep_speaker_on_narration
+            ?? null;
+        this.clearSpeakingOnNarration = htmlElements.clearSpeakingOnNarration
+            ?? htmlElements.clear_speaking_on_narration
+            ?? htmlElements.clearSpeakerOnNarration
+            ?? htmlElements.clear_speaker_on_narration
+            ?? htmlElements.deactivateSpeakersOnNarration
+            ?? htmlElements.deactivate_speakers_on_narration
+            ?? (preserveSpeakerOnNarration === null
+                ? false
+                : !this._coerceBooleanFlag(preserveSpeakerOnNarration));
+        this.renderer = new CharacterRenderer(this.htmlElements, this.characterSlots, {
+            positions: this.htmlElements.positions,
+            showCharacterNames: this.showCharacterNames
+        });
+    }
+
+    _firstDefined(...values) {
+        return values.find(value => value !== undefined && value !== null);
+    }
+
+    _coerceBooleanFlag(value, fallback = false) {
+        if (value === undefined || value === null) {
+            return fallback;
+        }
+
+        if (typeof value === "boolean") {
+            return value;
+        }
+
+        if (typeof value === "number") {
+            return value !== 0;
+        }
+
+        if (typeof value === "string") {
+            const normalizedValue = value.trim().toLowerCase();
+
+            if (["false", "0", "no", "off"].includes(normalizedValue)) {
+                return false;
+            }
+
+            if (["true", "1", "yes", "on"].includes(normalizedValue)) {
+                return true;
+            }
+        }
+
+        return Boolean(value);
+    }
+
+    shouldClearSpeakingForNarration(dialogue = {}) {
+        const preserveValue = this._firstDefined(
+            dialogue?.preserveSpeaker,
+            dialogue?.preserve_speaker,
+            dialogue?.keepSpeaker,
+            dialogue?.keep_speaker,
+            dialogue?.keepCharactersActive,
+            dialogue?.keep_characters_active
+        );
+
+        if (preserveValue !== undefined) {
+            return !this._coerceBooleanFlag(preserveValue, true);
+        }
+
+        const clearValue = this._firstDefined(
+            dialogue?.clearSpeaking,
+            dialogue?.clear_speaking,
+            dialogue?.clearSpeaker,
+            dialogue?.clear_speaker,
+            dialogue?.clearActiveSpeaker,
+            dialogue?.clear_active_speaker,
+            dialogue?.deactivateSpeakers,
+            dialogue?.deactivate_speakers,
+            dialogue?.deactivateCharacters,
+            dialogue?.deactivate_characters
+        );
+
+        if (clearValue !== undefined) {
+            return this._coerceBooleanFlag(clearValue);
+        }
+
+        const speakingValue = this._firstDefined(
+            dialogue?.speaking,
+            dialogue?.isSpeaking,
+            dialogue?.is_speaking
+        );
+
+        if (speakingValue !== undefined) {
+            return this._coerceBooleanFlag(speakingValue, true) === false;
+        }
+
+        return this._coerceBooleanFlag(this.clearSpeakingOnNarration);
     }
 
     _ensureCharacterData(characterId) {
@@ -195,10 +295,20 @@ export class CharactersManager {
         }
 
         const state = this.getState(id);
-        const isAlreadyVisible = state.visible && state.image === character.image && state.position === position;
+        const shouldResetEmotion = this._coerceBooleanFlag(
+            options.resetEmotion ?? options.reset_emotion,
+            false
+        );
+        const shouldUseBaseImage = shouldResetEmotion || !state.emotion || !state.image;
+        const nextImage = shouldUseBaseImage ? character.image : state.image;
+        const isAlreadyVisible = state.visible && state.image === nextImage && state.position === position;
 
         state.show();
-        state.setImage(character.image);
+        if (shouldResetEmotion) {
+            state.resetAppearance(character.image);
+        } else if (shouldUseBaseImage) {
+            state.setImage(character.image);
+        }
         state.setPosition(position);
 
         const hasSpeakingOption = options?.speaking !== undefined
@@ -227,11 +337,29 @@ export class CharactersManager {
         return isAlreadyVisible ? null : state;
     }
 
+    resetEmotion(id) {
+        const character = this.getCharacterById(id);
+
+        if (!character) {
+            return null;
+        }
+
+        const state = this.getState(id);
+        state.resetAppearance(character.image);
+
+        this.renderer.setActiveCharacter(this.speakingCharacterId);
+        this.renderer.render(state, character);
+
+        return state;
+    }
+
     showDialogueCharacter(dialogue = {}) {
         const characterId = dialogue?.characterId ?? dialogue?.character_id ?? null;
 
         if (characterId === null || characterId === undefined) {
-            this.setSpeakingCharacter(null);
+            if (this.shouldClearSpeakingForNarration(dialogue)) {
+                this.setSpeakingCharacter(null);
+            }
             return null;
         }
 

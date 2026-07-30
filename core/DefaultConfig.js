@@ -1,5 +1,33 @@
 export class Config {
     constructor(options = {}) {
+        const coerceBooleanFlag = (value, fallback = false) => {
+            if (value === undefined || value === null) {
+                return fallback;
+            }
+
+            if (typeof value === "boolean") {
+                return value;
+            }
+
+            if (typeof value === "number") {
+                return value !== 0;
+            }
+
+            if (typeof value === "string") {
+                const normalizedValue = value.trim().toLowerCase();
+
+                if (["false", "0", "no", "off"].includes(normalizedValue)) {
+                    return false;
+                }
+
+                if (["true", "1", "yes", "on"].includes(normalizedValue)) {
+                    return true;
+                }
+            }
+
+            return Boolean(value);
+        };
+
         this.textSpeed = options.textSpeed ?? 50;
         this.autoPlay = options.autoPlay ?? false;
         this.language = options.language ?? "uk";
@@ -75,10 +103,29 @@ export class Config {
                 ?? null
         };
         this.characterContainerId = options.characterContainerId ?? options.character_container_id ?? "characters";
+        this.showCharacterNames = coerceBooleanFlag(
+            options.showCharacterNames
+                ?? options.show_character_names
+                ?? options.displayCharacterNames
+                ?? options.display_character_names,
+            false
+        );
         this.autoDeactivateOtherSpeakers = options.autoDeactivateOtherSpeakers
             ?? options.autoDeactivateOtherCharacters
             ?? options.singleActiveSpeaker
             ?? true;
+        const preserveSpeakerOnNarration = options.preserveSpeakerOnNarration
+            ?? options.preserve_speaker_on_narration
+            ?? options.keepSpeakerOnNarration
+            ?? options.keep_speaker_on_narration
+            ?? null;
+        this.clearSpeakingOnNarration = options.clearSpeakingOnNarration
+            ?? options.clear_speaking_on_narration
+            ?? options.clearSpeakerOnNarration
+            ?? options.clear_speaker_on_narration
+            ?? options.deactivateSpeakersOnNarration
+            ?? options.deactivate_speakers_on_narration
+            ?? (preserveSpeakerOnNarration === null ? false : !coerceBooleanFlag(preserveSpeakerOnNarration));
         this.apiBaseUrl = options.apiBaseUrl ?? options.api_base_url ?? "";
         this.charactersApi = options.charactersApi ?? null;
 

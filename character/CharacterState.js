@@ -10,7 +10,7 @@ export class CharacterState {
     }
 
     setEmotion(emotion) {
-        this.emotion = emotion;
+        this.emotion = emotion ?? null;
     }
 
     setSpeaking(speaking) {
@@ -32,6 +32,11 @@ export class CharacterState {
     }
 
     setImage(image) {
+        this.image = image;
+    }
+
+    resetAppearance(image = null) {
+        this.emotion = null;
         this.image = image;
     }
 }

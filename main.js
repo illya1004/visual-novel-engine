@@ -39,7 +39,9 @@ export function createEngine(options = {}) {
     engine.characters = new CharactersManager(api, {
         container_id: config.characterContainerId,
         target_id: config.target_id,
-        autoDeactivateOtherSpeakers: config.autoDeactivateOtherSpeakers
+        showCharacterNames: config.showCharacterNames,
+        autoDeactivateOtherSpeakers: config.autoDeactivateOtherSpeakers,
+        clearSpeakingOnNarration: config.clearSpeakingOnNarration
     });
     engine.background = new BackgroundManager(config);
     engine.dialogue = new DialogueManager(api, {
