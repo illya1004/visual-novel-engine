@@ -133,7 +133,27 @@ export class BackgroundManager {
         return { image, options, type: mediaType };
     }
 
+    getElement() {
+        if (typeof document === "undefined") {
+            return null;
+        }
+
+        return document.getElementById(this.image_id);
+    }
+
+    getTargetElement() {
+        if (typeof document === "undefined") {
+            return null;
+        }
+
+        return document.getElementById(this.target_id);
+    }
+
     clear() {
+        if (typeof document === "undefined") {
+            return;
+        }
+
         const img = document.getElementById(this.image_id);
         if (img) {
             img.removeAttribute("src");

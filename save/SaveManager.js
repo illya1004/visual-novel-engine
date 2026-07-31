@@ -24,6 +24,12 @@ export class SaveManager {
             return false;
         }
 
+        const type = String(node.type ?? "").trim().toLowerCase();
+
+        if (node.end === true || ["end", "ending", "finish", "finished", "кінець"].includes(type)) {
+            return false;
+        }
+
         if (node.save === false || node.canSave === false || node.can_save === false) {
             return false;
         }

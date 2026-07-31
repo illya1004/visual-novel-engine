@@ -12,6 +12,8 @@ import { SaveManager } from "./save/SaveManager.js";
 import { GalleryManager } from "./gallery/GalleryManager.js";
 import { InterfaceManager } from "./ui/InterfaceManager.js";
 import { ViewportManager } from "./layout/ViewportManager.js";
+import { EffectsManager } from "./effects/EffectsManager.js";
+import { EndScreenManager } from "./ui/EndScreenManager.js";
 
 export function createEngine(options = {}) {
 
@@ -32,7 +34,9 @@ export function createEngine(options = {}) {
             musicVolume: config.audio.musicVolume,
             soundVolume: config.audio.soundVolume,
             textSpeed: config.settings.textSpeed,
-            textSize: config.settings.textSize
+            textSize: config.settings.textSize,
+            variables: config.settings.variables,
+            characterNameColors: config.settings.characterNameColors
         }
     });
 
@@ -41,7 +45,10 @@ export function createEngine(options = {}) {
         target_id: config.target_id,
         showCharacterNames: config.showCharacterNames,
         autoDeactivateOtherSpeakers: config.autoDeactivateOtherSpeakers,
-        clearSpeakingOnNarration: config.clearSpeakingOnNarration
+        clearSpeakingOnNarration: config.clearSpeakingOnNarration,
+        activeCharacterScale: config.settings.activeCharacterScale,
+        inactiveCharacterScale: config.settings.inactiveCharacterScale,
+        characterNameColors: config.settings.characterNameColors
     });
     engine.background = new BackgroundManager(config);
     engine.dialogue = new DialogueManager(api, {
@@ -49,12 +56,22 @@ export function createEngine(options = {}) {
         speakerNameTargetId: config.speakerNameTargetId,
         dialogueBoxTargetId: config.dialogueBoxTargetId,
         typewriterSpeed: config.textSpeed,
-        layout: config.dialogueLayout
+        layout: config.dialogueLayout,
+        richText: config.richText
     });
     engine.sound = new SoundManager(config.audio);
     engine.save = new SaveManager(config.save);
     engine.gallery = new GalleryManager(api, config.gallery);
     engine.choice = new ChoiceManager();
+    engine.effects = new EffectsManager({
+        backgroundManager: engine.background,
+        charactersManager: engine.characters,
+        dialogueManager: engine.dialogue
+    }, config.effects);
+    engine.endScreen = new EndScreenManager({
+        ...config.endScreen,
+        onReplay: () => engine.restart()
+    });
     engine.nodeManager = new NodeManager(api, {
         dialogueManager: engine.dialogue,
         backgroundManager: engine.background,
@@ -63,7 +80,9 @@ export function createEngine(options = {}) {
         settingsManager: engine.settings,
         galleryManager: engine.gallery,
         choiceManager: engine.choice,
-        viewportManager: engine.viewport
+        viewportManager: engine.viewport,
+        effectsManager: engine.effects,
+        endScreenManager: engine.endScreen
     });
     engine.settings.applyAll({
         soundManager: engine.sound,

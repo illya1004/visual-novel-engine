@@ -11,9 +11,9 @@ export class CharactersManager {
             container_id: "character-container",
             target_id: "background_image",
             positions: {
-                left: (scale) => ({ left: "0", right: "auto", transform: `scale(${scale})` }),
-                right: (scale) => ({ left: "auto", right: "0", transform: `scale(${scale})` }),
-                center: (scale) => ({ left: "50%", right: "auto", transform: `translateX(-50%) scale(${scale})` })
+                left: (scale) => ({ left: "0", right: "auto", transform: `scale(${scale})`, transformOrigin: "bottom left" }),
+                right: (scale) => ({ left: "auto", right: "0", transform: `scale(${scale})`, transformOrigin: "bottom right" }),
+                center: (scale) => ({ left: "50%", right: "auto", transform: `translateX(-50%) scale(${scale})`, transformOrigin: "bottom center" })
             },
             ...htmlElements
         };
@@ -36,6 +36,13 @@ export class CharactersManager {
                 ?? htmlElements.display_character_names,
             false
         );
+        this.characterNameColors = this._normalizeStringMap(
+            htmlElements.characterNameColors
+                ?? htmlElements.character_name_colors
+                ?? htmlElements.nameColors
+                ?? htmlElements.name_colors
+                ?? {}
+        );
         this.autoDeactivateOtherSpeakers = htmlElements.autoDeactivateOtherSpeakers
             ?? htmlElements.autoDeactivateOtherCharacters
             ?? htmlElements.singleActiveSpeaker
@@ -56,7 +63,23 @@ export class CharactersManager {
                 : !this._coerceBooleanFlag(preserveSpeakerOnNarration));
         this.renderer = new CharacterRenderer(this.htmlElements, this.characterSlots, {
             positions: this.htmlElements.positions,
-            showCharacterNames: this.showCharacterNames
+            showCharacterNames: this.showCharacterNames,
+            activeCharacterScale: htmlElements.activeCharacterScale
+                ?? htmlElements.active_character_scale
+                ?? htmlElements.characterActiveScale
+                ?? htmlElements.character_active_scale
+                ?? htmlElements.speakingScale
+                ?? htmlElements.speaking_scale
+                ?? htmlElements.speak_scale
+                ?? htmlElements.speakScale,
+            inactiveCharacterScale: htmlElements.inactiveCharacterScale
+                ?? htmlElements.inactive_character_scale
+                ?? htmlElements.characterInactiveScale
+                ?? htmlElements.character_inactive_scale
+                ?? htmlElements.inactiveScale
+                ?? htmlElements.inactive_scale
+                ?? htmlElements.idle_scale
+                ?? htmlElements.idleScale
         });
     }
 
@@ -90,6 +113,18 @@ export class CharactersManager {
         }
 
         return Boolean(value);
+    }
+
+    _normalizeStringMap(value = {}) {
+        if (!value || typeof value !== "object" || Array.isArray(value)) {
+            return {};
+        }
+
+        return Object.fromEntries(
+            Object.entries(value)
+                .filter(([, mapValue]) => mapValue !== undefined && mapValue !== null)
+                .map(([mapKey, mapValue]) => [String(mapKey), String(mapValue)])
+        );
     }
 
     shouldClearSpeakingForNarration(dialogue = {}) {
@@ -201,6 +236,7 @@ export class CharactersManager {
     async loadCharacters() {
         const response = await this.api.getCharacters();
         this.characters = Array.isArray(response) ? response : (response?.results ?? []);
+        this.setCharacterNameColors(this.characterNameColors, { refresh: false });
         this._syncSpeakerStatesFromCharacters();
         return this.characters;
     }
@@ -220,6 +256,92 @@ export class CharactersManager {
 
     getCharacterEmotion(id) {
         return this.charactersEmotions[id] || null;
+    }
+
+    _getCharacterNameColorFromData(character = {}) {
+        return character?.nameColor
+            ?? character?.name_color
+            ?? character?.nameColour
+            ?? character?.name_colour
+            ?? character?.speakerColor
+            ?? character?.speaker_color
+            ?? character?.color
+            ?? null;
+    }
+
+    setCharacterNameColor(characterId, color, options = {}) {
+        if (characterId === null || characterId === undefined) {
+            return null;
+        }
+
+        const key = String(characterId);
+        const nextColor = color === null || color === undefined || color === ""
+            ? null
+            : String(color);
+        const state = this.getState(characterId);
+        const character = this.getCharacterById(characterId);
+
+        state.setNameColor(nextColor);
+
+        if (nextColor) {
+            this.characterNameColors[key] = nextColor;
+            if (character) {
+                character.nameColor = nextColor;
+            }
+        } else {
+            delete this.characterNameColors[key];
+            if (character) {
+                delete character.nameColor;
+            }
+        }
+
+        if (options.refresh !== false) {
+            this.refreshCharacterDisplay();
+        }
+
+        return nextColor;
+    }
+
+    setCharacterNameColors(colors = {}, options = {}) {
+        const normalizedColors = this._normalizeStringMap(colors);
+        this.characterNameColors = {
+            ...this.characterNameColors,
+            ...normalizedColors
+        };
+
+        for (const [characterId, color] of Object.entries(normalizedColors)) {
+            this.setCharacterNameColor(characterId, color, { refresh: false });
+        }
+
+        if (options.refresh !== false) {
+            this.refreshCharacterDisplay();
+        }
+
+        return { ...this.characterNameColors };
+    }
+
+    getCharacterNameColor(characterId) {
+        if (characterId === null || characterId === undefined) {
+            return null;
+        }
+
+        const state = this.states[characterId] ?? this.states[String(characterId)] ?? null;
+        const character = this.getCharacterById(characterId);
+
+        return state?.nameColor
+            ?? this.characterNameColors[String(characterId)]
+            ?? this._getCharacterNameColorFromData(character)
+            ?? null;
+    }
+
+    setCharacterScales(scales = {}, inactiveScale = undefined) {
+        const nextScales = this.renderer.setCharacterScales(scales, inactiveScale);
+        this.refreshCharacterDisplay();
+        return nextScales;
+    }
+
+    getCharacterScales() {
+        return this.renderer.getCharacterScales();
     }
 
     applyCharacterAppearance(characterId) {
@@ -244,6 +366,34 @@ export class CharactersManager {
             }
             this.applyCharacterAppearance(characterId);
         }
+    }
+
+    getCharacterSlot(characterId) {
+        if (this.characterSlots.has(characterId)) {
+            return this.characterSlots.get(characterId);
+        }
+
+        const stringId = String(characterId);
+
+        for (const [slotCharacterId, slot] of this.characterSlots.entries()) {
+            if (String(slotCharacterId) === stringId) {
+                return slot;
+            }
+        }
+
+        return null;
+    }
+
+    getCharacterElement(characterId) {
+        const slot = this.getCharacterSlot(characterId);
+        return slot?.imgElement ?? slot?.slotElement ?? null;
+    }
+
+    getVisibleCharacterElements() {
+        return Object.entries(this.states)
+            .filter(([, state]) => state?.visible)
+            .map(([characterId]) => this.getCharacterElement(characterId))
+            .filter(Boolean);
     }
 
     setSpeakingCharacter(characterId, options = {}) {
@@ -302,8 +452,22 @@ export class CharactersManager {
         const shouldUseBaseImage = shouldResetEmotion || !state.emotion || !state.image;
         const nextImage = shouldUseBaseImage ? character.image : state.image;
         const isAlreadyVisible = state.visible && state.image === nextImage && state.position === position;
+        const nameColor = this._firstDefined(
+            options.nameColor,
+            options.name_color,
+            options.characterNameColor,
+            options.character_name_color
+        );
 
         state.show();
+        if (nameColor !== undefined) {
+            this.setCharacterNameColor(id, nameColor, { refresh: false });
+        } else if (!state.nameColor) {
+            const configuredColor = this.characterNameColors[String(id)] ?? this._getCharacterNameColorFromData(character);
+            if (configuredColor) {
+                state.setNameColor(configuredColor);
+            }
+        }
         if (shouldResetEmotion) {
             state.resetAppearance(character.image);
         } else if (shouldUseBaseImage) {

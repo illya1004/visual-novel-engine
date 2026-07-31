@@ -58,3 +58,28 @@ test('dialogue manager applies configurable box layout', async () => {
     assert.equal(boxElement.classList.contains('web-novel-dialogue--left'), true);
     assert.equal(boxElement.style.values['--wn-dialogue-custom-width'], '42rem');
 });
+
+test('dialogue manager applies rich text fallback and speaker color', async () => {
+    const speakerNameElement = {
+        textContent: '',
+        style: {}
+    };
+    const targetElement = {
+        textContent: '',
+        style: {}
+    };
+    const manager = new DialogueManager(null, {
+        targetElement,
+        speakerNameElement
+    });
+
+    await manager.show({
+        speakerName: 'Mira',
+        speakerNameColor: '#ff88aa',
+        text: 'Hello {color=#f00}there{/color}.'
+    });
+
+    assert.equal(speakerNameElement.textContent, 'Mira');
+    assert.equal(speakerNameElement.style.color, '#ff88aa');
+    assert.equal(targetElement.textContent, 'Hello there.');
+});

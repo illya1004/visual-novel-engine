@@ -108,6 +108,20 @@ export class InterfaceManager {
         textSize.min = "10";
         textSize.value = settings?.get?.("textSize") ?? "";
 
+        const activeCharacterScale = addInput("Масштаб активного персонажа", document.createElement("input"));
+        activeCharacterScale.type = "number";
+        activeCharacterScale.min = "0.1";
+        activeCharacterScale.max = "3";
+        activeCharacterScale.step = "0.05";
+        activeCharacterScale.value = settings?.get?.("activeCharacterScale") ?? 1.15;
+
+        const inactiveCharacterScale = addInput("Масштаб неактивного персонажа", document.createElement("input"));
+        inactiveCharacterScale.type = "number";
+        inactiveCharacterScale.min = "0.1";
+        inactiveCharacterScale.max = "3";
+        inactiveCharacterScale.step = "0.05";
+        inactiveCharacterScale.value = settings?.get?.("inactiveCharacterScale") ?? 1;
+
         const soundEnabled = addInput("Звук увімкнено", document.createElement("input"));
         soundEnabled.type = "checkbox";
         soundEnabled.checked = settings?.get?.("soundEnabled") ?? true;
@@ -150,7 +164,9 @@ export class InterfaceManager {
                 soundEffectsEnabled: soundEffectsEnabled.checked,
                 volume: Number(volume.value),
                 musicVolume: Number(musicVolume.value),
-                soundVolume: Number(soundVolume.value)
+                soundVolume: Number(soundVolume.value),
+                activeCharacterScale: Number(activeCharacterScale.value) || 1.15,
+                inactiveCharacterScale: Number(inactiveCharacterScale.value) || 1
             });
         });
         panel.addEventListener("submit", (event) => event.preventDefault());
