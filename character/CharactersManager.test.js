@@ -182,3 +182,89 @@ test('character names under sprites can be enabled through options', async () =>
     assert.equal(name.textContent, 'Alice');
     assert.equal(name.style.display, 'block');
 });
+
+test('character name colors can be configured and refreshed', async () => {
+    const { registerElement } = createFakeDocument();
+    const container = registerElement('character-container', new FakeElement('character-container'));
+
+    const manager = new CharactersManager(createApi(), {
+        container_id: 'character-container',
+        showCharacterNames: true,
+        characterNameColors: {
+            a: '#ff88aa'
+        }
+    });
+    await manager.loadCharacters();
+    manager.showCharacter('a', 'left');
+
+    const name = container.children[0].children[1];
+    assert.equal(name.style.color, '#ff88aa');
+
+    manager.setCharacterNameColor('a', '#99ddff');
+
+    assert.equal(name.style.color, '#99ddff');
+    assert.equal(manager.getCharacterNameColor('a'), '#99ddff');
+});
+
+test('character active and inactive scales can be customized at runtime', async () => {
+    const { registerElement } = createFakeDocument();
+    const container = registerElement('character-container', new FakeElement('character-container'));
+
+    const manager = new CharactersManager(createApi(), {
+        container_id: 'character-container',
+        activeCharacterScale: 1.35,
+        inactiveCharacterScale: 0.8
+    });
+    await manager.loadCharacters();
+
+    manager.showCharacter('a', 'left');
+    manager.showCharacter('b', 'right');
+    manager.setSpeakingCharacter('a');
+
+    const [firstSlot, secondSlot] = container.children;
+    assert.match(firstSlot.style.transform, /1\.35/);
+    assert.match(secondSlot.style.transform, /0\.8/);
+
+    manager.setCharacterScales({
+        activeCharacterScale: 1.1,
+        inactiveCharacterScale: 0.9
+    });
+
+    assert.match(firstSlot.style.transform, /1\.1/);
+    assert.match(secondSlot.style.transform, /0\.9/);
+
+    manager.setCharacterScales(1.05, 0.95);
+
+    assert.match(firstSlot.style.transform, /1\.05/);
+    assert.match(secondSlot.style.transform, /0\.95/);
+});
+
+test('character scale stays bottom anchored and cannot exceed stage height', async () => {
+    const { registerElement } = createFakeDocument();
+    const container = registerElement('character-container', new FakeElement('character-container'));
+
+    const manager = new CharactersManager(createApi(), {
+        container_id: 'character-container',
+        activeCharacterScale: 1.5,
+        inactiveCharacterScale: 0.75
+    });
+    await manager.loadCharacters();
+
+    manager.showCharacter('a', 'left', { imageMaxHeight: '100%', offsetX: '24', offsetY: -12 }, { speaking: true });
+
+    const slot = container.children[0];
+    const image = slot.children[0];
+
+    assert.equal(slot.style.top, '0');
+    assert.equal(slot.style.bottom, '0');
+    assert.equal(slot.style.height, '100%');
+    assert.equal(slot.style.display, 'flex');
+    assert.equal(slot.style.transformOrigin, 'bottom left');
+    assert.match(slot.style.transform, /translate\(24px, -12px\)/);
+    assert.equal(image.style.maxHeight, '66.66666666666667%');
+
+    manager.setSpeakingCharacter('a', { speaking: false });
+
+    assert.equal(slot.style.transformOrigin, 'bottom left');
+    assert.equal(image.style.maxHeight, '100%');
+});

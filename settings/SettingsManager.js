@@ -11,6 +11,15 @@ export class SettingsManager {
         this.novelId = options.novelId ?? options.novel_id ?? null;
         this.protagonistName = options.protagonistName || options.heroName || "";
         this.lastProtagonistPayload = null;
+        const initialVariables = options.variables
+            ?? options.customVariables
+            ?? options.custom_variables
+            ?? {};
+        const initialCharacterNameColors = options.characterNameColors
+            ?? options.character_name_colors
+            ?? options.nameColors
+            ?? options.name_colors
+            ?? {};
         this.defaults = {
             soundEnabled: true,
             musicEnabled: true,
@@ -19,12 +28,32 @@ export class SettingsManager {
             musicVolume: 1,
             soundVolume: 1,
             textSpeed: options.textSpeed ?? 50,
-            textSize: options.textSize ?? null
+            textSize: options.textSize ?? null,
+            activeCharacterScale: options.activeCharacterScale
+                ?? options.active_character_scale
+                ?? options.characterActiveScale
+                ?? options.character_active_scale
+                ?? options.speakingScale
+                ?? options.speaking_scale
+                ?? options.speak_scale
+                ?? options.speakScale
+                ?? 1.15,
+            inactiveCharacterScale: options.inactiveCharacterScale
+                ?? options.inactive_character_scale
+                ?? options.characterInactiveScale
+                ?? options.character_inactive_scale
+                ?? options.inactiveScale
+                ?? options.inactive_scale
+                ?? options.idle_scale
+                ?? options.idleScale
+                ?? 1,
+            variables: this._normalizeStringMap(initialVariables),
+            characterNameColors: this._normalizeStringMap(initialCharacterNameColors)
         };
         this.values = {
             ...this.defaults,
             ...this._loadStoredValues(),
-            ...options.values
+            ...this._normalizeSettingValues(options.values || {})
         };
         delete this.values.protagonistName;
         delete this.values.heroName;
@@ -47,10 +76,98 @@ export class SettingsManager {
             const values = JSON.parse(this.storage.getItem(this.storageKey) || "{}") || {};
             delete values.protagonistName;
             delete values.heroName;
-            return values;
+            return this._normalizeSettingValues(values);
         } catch {
             return {};
         }
+    }
+
+    _normalizeStringMap(value = {}) {
+        if (!value || typeof value !== "object" || Array.isArray(value)) {
+            return {};
+        }
+
+        return Object.fromEntries(
+            Object.entries(value)
+                .filter(([, mapValue]) => mapValue !== undefined && mapValue !== null)
+                .map(([mapKey, mapValue]) => [String(mapKey), String(mapValue)])
+        );
+    }
+
+    _normalizeSettingValues(values = {}) {
+        const nextValues = { ...values };
+
+        nextValues.activeCharacterScale = nextValues.activeCharacterScale
+            ?? nextValues.active_character_scale
+            ?? nextValues.characterActiveScale
+            ?? nextValues.character_active_scale
+            ?? nextValues.activeScale
+            ?? nextValues.active_scale
+            ?? nextValues.speakingScale
+            ?? nextValues.speaking_scale
+            ?? nextValues.speak_scale
+            ?? nextValues.speakScale;
+        nextValues.inactiveCharacterScale = nextValues.inactiveCharacterScale
+            ?? nextValues.inactive_character_scale
+            ?? nextValues.characterInactiveScale
+            ?? nextValues.character_inactive_scale
+            ?? nextValues.inactiveScale
+            ?? nextValues.inactive_scale
+            ?? nextValues.idle_scale
+            ?? nextValues.idleScale;
+        nextValues.variables = nextValues.variables
+            ?? nextValues.customVariables
+            ?? nextValues.custom_variables;
+        nextValues.characterNameColors = nextValues.characterNameColors
+            ?? nextValues.character_name_colors
+            ?? nextValues.nameColors
+            ?? nextValues.name_colors;
+
+        delete nextValues.protagonistName;
+        delete nextValues.heroName;
+        delete nextValues.active_character_scale;
+        delete nextValues.inactive_character_scale;
+        delete nextValues.characterActiveScale;
+        delete nextValues.characterInactiveScale;
+        delete nextValues.character_active_scale;
+        delete nextValues.character_inactive_scale;
+        delete nextValues.activeScale;
+        delete nextValues.inactiveScale;
+        delete nextValues.active_scale;
+        delete nextValues.inactive_scale;
+        delete nextValues.speakingScale;
+        delete nextValues.speaking_scale;
+        delete nextValues.speakScale;
+        delete nextValues.speak_scale;
+        delete nextValues.idleScale;
+        delete nextValues.idle_scale;
+        delete nextValues.customVariables;
+        delete nextValues.custom_variables;
+        delete nextValues.character_name_colors;
+        delete nextValues.nameColors;
+        delete nextValues.name_colors;
+
+        if (nextValues.activeCharacterScale === undefined) {
+            delete nextValues.activeCharacterScale;
+        }
+
+        if (nextValues.inactiveCharacterScale === undefined) {
+            delete nextValues.inactiveCharacterScale;
+        }
+
+        if (nextValues.variables === undefined) {
+            delete nextValues.variables;
+        } else {
+            nextValues.variables = this._normalizeStringMap(nextValues.variables);
+        }
+
+        if (nextValues.characterNameColors === undefined) {
+            delete nextValues.characterNameColors;
+        } else {
+            nextValues.characterNameColors = this._normalizeStringMap(nextValues.characterNameColors);
+        }
+
+        return nextValues;
     }
 
     _persist() {
@@ -62,21 +179,33 @@ export class SettingsManager {
     }
 
     get(key) {
+        if (key === "variables" || key === "characterNameColors") {
+            return { ...(this.values[key] || {}) };
+        }
+
         return this.values[key];
     }
 
     snapshot() {
-        return { ...this.values };
+        return {
+            ...this.values,
+            variables: { ...(this.values.variables || {}) },
+            characterNameColors: { ...(this.values.characterNameColors || {}) }
+        };
     }
 
     update(values = {}, options = {}) {
-        const nextValues = { ...values };
-        delete nextValues.protagonistName;
-        delete nextValues.heroName;
+        const nextValues = this._normalizeSettingValues(values);
 
         this.values = {
             ...this.values,
-            ...nextValues
+            ...nextValues,
+            variables: nextValues.variables
+                ? { ...(this.values.variables || {}), ...nextValues.variables }
+                : this.values.variables,
+            characterNameColors: nextValues.characterNameColors
+                ? { ...(this.values.characterNameColors || {}), ...nextValues.characterNameColors }
+                : this.values.characterNameColors
         };
 
         if (options.persist !== false) {
@@ -84,6 +213,30 @@ export class SettingsManager {
         }
 
         return this.snapshot();
+    }
+
+    setVariable(key, value, options = {}) {
+        if (!key) {
+            return this.snapshot();
+        }
+
+        return this.update({
+            variables: {
+                [String(key)]: value
+            }
+        }, options);
+    }
+
+    setCharacterNameColor(characterId, color, options = {}) {
+        if (characterId === null || characterId === undefined) {
+            return this.snapshot();
+        }
+
+        return this.update({
+            characterNameColors: {
+                [String(characterId)]: color
+            }
+        }, options);
     }
 
     async promptForNovelStart(options = {}) {
@@ -159,13 +312,21 @@ export class SettingsManager {
     }
 
     applyToCharacters(charactersManager) {
-        if (!charactersManager || this.protagonistCharacterId === null || this.protagonistCharacterId === undefined) {
+        if (!charactersManager) {
             return;
         }
 
-        const character = charactersManager.getCharacterById?.(this.protagonistCharacterId);
-        if (character && this.protagonistName) {
-            character.name = this.protagonistName;
+        charactersManager.setCharacterScales?.({
+            activeCharacterScale: this.values.activeCharacterScale,
+            inactiveCharacterScale: this.values.inactiveCharacterScale
+        });
+        charactersManager.setCharacterNameColors?.(this.values.characterNameColors || {});
+
+        if (this.protagonistCharacterId !== null && this.protagonistCharacterId !== undefined) {
+            const character = charactersManager.getCharacterById?.(this.protagonistCharacterId);
+            if (character && this.protagonistName) {
+                character.name = this.protagonistName;
+            }
         }
     }
 
@@ -175,19 +336,63 @@ export class SettingsManager {
         this.applyToCharacters(managers.charactersManager);
     }
 
+    normalizeVariableKey(key = "") {
+        return String(key)
+            .trim()
+            .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+            .replace(/[-.\s]+/g, "_")
+            .toLowerCase();
+    }
+
+    getVariableReplacements() {
+        const protagonistName = this.protagonistName || "";
+        const variables = {
+            ...(this.values.variables || {})
+        };
+
+        return {
+            ...variables,
+            heroName: protagonistName,
+            hero_name: protagonistName,
+            playerName: protagonistName,
+            player_name: protagonistName,
+            protagonistName,
+            protagonist_name: protagonistName
+        };
+    }
+
+    resolveVariable(key, replacements = this.getVariableReplacements()) {
+        const normalizedKey = this.normalizeVariableKey(key);
+
+        for (const [candidateKey, value] of Object.entries(replacements)) {
+            if (candidateKey === key || this.normalizeVariableKey(candidateKey) === normalizedKey) {
+                return value;
+            }
+        }
+
+        return undefined;
+    }
+
     replaceVariables(value) {
         if (typeof value !== "string") {
             return value;
         }
 
-        const protagonistName = this.protagonistName || "";
+        const replacements = this.getVariableReplacements();
+
         return value
-            .replaceAll("{{heroName}}", protagonistName)
-            .replaceAll("{{playerName}}", protagonistName)
-            .replaceAll("{heroName}", protagonistName)
-            .replaceAll("{playerName}", protagonistName)
-            .replaceAll("[heroName]", protagonistName)
-            .replaceAll("[playerName]", protagonistName);
+            .replace(/\{\{\s*([A-Za-z0-9_.-]+)\s*\}\}/g, (match, key) => {
+                const replacement = this.resolveVariable(key, replacements);
+                return replacement === undefined ? match : String(replacement);
+            })
+            .replace(/\{\s*([A-Za-z0-9_.-]+)\s*\}/g, (match, key) => {
+                const replacement = this.resolveVariable(key, replacements);
+                return replacement === undefined ? match : String(replacement);
+            })
+            .replace(/\[([A-Za-z0-9_.-]+)\]/g, (match, key) => {
+                const replacement = this.resolveVariable(key, replacements);
+                return replacement === undefined ? match : String(replacement);
+            });
     }
 
     applyToDialogueData(dialogue) {
@@ -199,7 +404,13 @@ export class SettingsManager {
             ...dialogue,
             text: this.replaceVariables(dialogue.text),
             speakerName: this.replaceVariables(dialogue.speakerName),
-            speaker_name: this.replaceVariables(dialogue.speaker_name)
+            speaker_name: this.replaceVariables(dialogue.speaker_name),
+            speakerNameColor: this.replaceVariables(dialogue.speakerNameColor),
+            speaker_name_color: this.replaceVariables(dialogue.speaker_name_color),
+            nameColor: this.replaceVariables(dialogue.nameColor),
+            name_color: this.replaceVariables(dialogue.name_color),
+            characterNameColor: this.replaceVariables(dialogue.characterNameColor),
+            character_name_color: this.replaceVariables(dialogue.character_name_color)
         };
     }
 }

@@ -102,7 +102,47 @@ export class Config {
                 ?? options.dialogue_width
                 ?? null
         };
+        this.richText = {
+            enabled: options.richText?.enabled ?? options.rich_text?.enabled ?? options.richTextEnabled ?? options.rich_text_enabled ?? true
+        };
         this.characterContainerId = options.characterContainerId ?? options.character_container_id ?? "characters";
+        const characterScaleOptions = options.characterScale ?? options.character_scale ?? {};
+        this.activeCharacterScale = options.activeCharacterScale
+            ?? options.active_character_scale
+            ?? options.characterActiveScale
+            ?? options.character_active_scale
+            ?? options.speakingScale
+            ?? options.speaking_scale
+            ?? options.speak_scale
+            ?? options.speakScale
+            ?? characterScaleOptions.active
+            ?? characterScaleOptions.activeCharacterScale
+            ?? characterScaleOptions.active_character_scale
+            ?? characterScaleOptions.characterActiveScale
+            ?? characterScaleOptions.character_active_scale
+            ?? characterScaleOptions.speakingScale
+            ?? characterScaleOptions.speaking_scale
+            ?? characterScaleOptions.speak_scale
+            ?? characterScaleOptions.speakScale
+            ?? 1.15;
+        this.inactiveCharacterScale = options.inactiveCharacterScale
+            ?? options.inactive_character_scale
+            ?? options.characterInactiveScale
+            ?? options.character_inactive_scale
+            ?? options.inactiveScale
+            ?? options.inactive_scale
+            ?? options.idle_scale
+            ?? options.idleScale
+            ?? characterScaleOptions.inactive
+            ?? characterScaleOptions.inactiveCharacterScale
+            ?? characterScaleOptions.inactive_character_scale
+            ?? characterScaleOptions.characterInactiveScale
+            ?? characterScaleOptions.character_inactive_scale
+            ?? characterScaleOptions.inactiveScale
+            ?? characterScaleOptions.inactive_scale
+            ?? characterScaleOptions.idle_scale
+            ?? characterScaleOptions.idleScale
+            ?? 1;
         this.showCharacterNames = coerceBooleanFlag(
             options.showCharacterNames
                 ?? options.show_character_names
@@ -154,9 +194,39 @@ export class Config {
             ...(options.settings || {}),
             textSpeed: options.settings?.textSpeed ?? this.textSpeed,
             textSize: options.settings?.textSize ?? options.textSize ?? null,
+            activeCharacterScale: options.settings?.activeCharacterScale
+                ?? options.settings?.active_character_scale
+                ?? options.settings?.characterActiveScale
+                ?? options.settings?.character_active_scale
+                ?? options.settings?.speakingScale
+                ?? options.settings?.speaking_scale
+                ?? options.settings?.speak_scale
+                ?? options.settings?.speakScale
+                ?? this.activeCharacterScale,
+            inactiveCharacterScale: options.settings?.inactiveCharacterScale
+                ?? options.settings?.inactive_character_scale
+                ?? options.settings?.characterInactiveScale
+                ?? options.settings?.character_inactive_scale
+                ?? options.settings?.inactiveScale
+                ?? options.settings?.inactive_scale
+                ?? options.settings?.idle_scale
+                ?? options.settings?.idleScale
+                ?? this.inactiveCharacterScale,
             protagonistName: options.settings?.protagonistName ?? options.protagonistName ?? options.heroName ?? "",
             protagonistCharacterId: options.settings?.protagonistCharacterId ?? options.protagonistCharacterId ?? options.heroCharacterId ?? null,
             promptForProtagonistName: options.settings?.promptForProtagonistName ?? options.promptForProtagonistName ?? true,
+            variables: options.settings?.variables
+                ?? options.settings?.customVariables
+                ?? options.settings?.custom_variables
+                ?? options.variables
+                ?? {},
+            characterNameColors: options.settings?.characterNameColors
+                ?? options.settings?.character_name_colors
+                ?? options.characterNameColors
+                ?? options.character_name_colors
+                ?? options.nameColors
+                ?? options.name_colors
+                ?? {},
             userAccountId: options.settings?.userAccountId
                 ?? options.settings?.user_account_id
                 ?? options.userAccountId
@@ -179,6 +249,42 @@ export class Config {
             enabled: options.interface?.enabled ?? true,
             autoCreateControls: options.interface?.autoCreateControls ?? options.autoCreateInterfaceControls ?? true,
             ...(options.interface || {})
+        };
+
+        this.effects = {
+            enabled: options.effects?.enabled ?? options.effectsEnabled ?? true,
+            defaultDuration: options.effects?.defaultDuration
+                ?? options.effects?.default_duration
+                ?? options.effectDuration
+                ?? options.effect_duration
+                ?? 700
+        };
+
+        this.endScreen = {
+            enabled: options.endScreen?.enabled ?? options.end_screen?.enabled ?? options.endScreenEnabled ?? true,
+            rootTargetId: options.endScreen?.rootTargetId
+                ?? options.endScreen?.root_target_id
+                ?? options.end_screen?.rootTargetId
+                ?? options.end_screen?.root_target_id
+                ?? this.viewport.rootTargetId,
+            backUrl: options.endScreen?.backUrl
+                ?? options.endScreen?.back_url
+                ?? options.end_screen?.backUrl
+                ?? options.end_screen?.back_url
+                ?? options.backUrl
+                ?? options.back_url
+                ?? null,
+            title: options.endScreen?.title ?? options.end_screen?.title ?? "Кінець",
+            backLabel: options.endScreen?.backLabel
+                ?? options.endScreen?.back_label
+                ?? options.end_screen?.backLabel
+                ?? options.end_screen?.back_label
+                ?? "Назад",
+            replayLabel: options.endScreen?.replayLabel
+                ?? options.endScreen?.replay_label
+                ?? options.end_screen?.replayLabel
+                ?? options.end_screen?.replay_label
+                ?? "Зіграти знову"
         };
     }
 }

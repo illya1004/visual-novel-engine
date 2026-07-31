@@ -7,7 +7,10 @@
 - фони та їхні параметри відображення;
 - декілька персонажів на сцені, позиції, активного мовця й емоції;
 - діалоги з ефектом друку та пропуском тексту;
+- rich-text теги в репліках: `cps`, `color`, `shake`, `blink`, `glitch`, `wave`, `fade`;
 - вибір з розгалуженням сюжету;
+- кінцевий екран з кнопками `Назад` і `Зіграти знову`;
+- ефекти для фону й персонажів: `shake`, `blink`, `glitch`, `pulse`, `flash`;
 - приховування персонажів;
 - REST API з пагінацією `limit` / `offset`;
 - автономний тестовий сервер, демо та модульні тести.
@@ -51,6 +54,8 @@ py -m unittest discover -s tests -p "*_test.py"
 | `background/BackgroundManager.js` | Встановлює фонове зображення. |
 | `character/` | Стан, DOM-рендеринг та емоції персонажів. |
 | `dialogue/` | Показ реплік і ефект друку. |
+| `rich-text/` | Парсер тегів у тексті: швидкість, колір, паузи й анімовані фрагменти. |
+| `effects/` | DOM-ефекти для фону, персонажів і текстових шарів. |
 | `sound/SoundManager.js` | Фонова музика, звукові ефекти, гучність і вимкнення аудіо. |
 | `settings/SettingsManager.js` | Збережені налаштування: звук, швидкість і розмір тексту; ім'я героя тримається окремо для поточної гри. |
 | `save/SaveManager.js` | Ручне збереження поточного вузла, крім автоматичних `auto_next` / `skip_auto`. |
@@ -121,6 +126,14 @@ const engine = createEngine({
         position: "right",
         width: "34rem"
     },
+    richText: {
+        enabled: true
+    },
+    endScreen: {
+        backUrl: "/novels",
+        backLabel: "Назад",
+        replayLabel: "Зіграти знову"
+    },
     audio: {
         volume: 1,
         musicVolume: 0.8,
@@ -131,7 +144,13 @@ const engine = createEngine({
         promptForProtagonistName: true,
         userAccountId: 42,
         novelId: 7,
-        textSize: 22
+        textSize: 22,
+        variables: {
+            club_name: "літературний клуб"
+        },
+        characterNameColors: {
+            1: "#ff88aa"
+        }
     },
     textSpeed: 25
 });
@@ -168,6 +187,10 @@ engine.reset();
 | `dialogueBoxTargetId` | `string` | `"dialogue"` | ID контейнера діалогового блоку. |
 | `dialogueLayout.position` | `full \| left \| right \| center` | `"full"` | Розташування діалогового блоку: на всю нижню частину або частково збоку. |
 | `dialogueLayout.width` | `number \| string` | `null` | Ширина бокового/центрального діалогового блоку. |
+| `richText.enabled` | `boolean` | `true` | Вмикає обробку rich-text тегів у репліках. |
+| `endScreen.backUrl` | `string` | `null` | URL для кнопки `Назад` на кінцевому екрані; якщо не задано, використовується `history.back()`. |
+| `endScreen.backLabel` | `string` | `"Назад"` | Текст кнопки повернення. |
+| `endScreen.replayLabel` | `string` | `"Зіграти знову"` | Текст кнопки повторного проходження. |
 | `autoDeactivateOtherSpeakers` | `boolean` | `true` | Автоматично знімає активний стан з інших персонажів, коли починає говорити новий. |
 | `audio.enabled` | `boolean` | `true` | Глобально вмикає або вимикає весь звук. |
 | `audio.musicEnabled` | `boolean` | `true` | Дозволяє фонову музику. |
@@ -180,6 +203,9 @@ engine.reset();
 | `settings.userAccountId` | `number \| string` | `null` | Акаунт користувача для запису імені героя в БД. |
 | `settings.novelId` | `number \| string` | `null` | Новела, до якої прив'язане введене ім'я героя. |
 | `settings.textSize` | `number \| string` | `null` | Розмір тексту діалогу, наприклад `22` або `"1.3rem"`. |
+| `settings.variables` | `object` | `{}` | Користувацькі змінні для підстановок у тексті, наприклад `[club_name]`. |
+| `settings.characterNameColors` | `object` | `{}` | Мапа кольорів імен за ID персонажа; зберігається разом з налаштуваннями. |
+| `effects.defaultDuration` | `number` | `700` | Типова тривалість DOM-ефектів у мілісекундах. |
 | `save.enabled` | `boolean` | `true` | Дозволяє кнопку та API ручного збереження. |
 | `save.autoSaveEnabled` | `boolean` | `true` | Вмикає автозбереження. |
 | `save.autoSaveIntervalMs` | `number` | `600000` | Інтервал автозбереження; типово 10 хвилин. |
@@ -187,6 +213,8 @@ engine.reset();
 | `textSpeed` | `number` | `50` | Затримка між символами в мілісекундах. |
 
 Ім'я героя не зберігається як налаштування і не показується в панелі налаштувань. Рушій питає його на початку гри, тримає в поточній сесії, застосовує до `protagonistCharacterId` і відправляє в API як окремий запис для БД.
+
+У тексті можна використовувати підстановки `{{playerName}}`, `{playerName}`, `[playerName]` і `[player_name]`; усі вони виведуть ім'я, введене гравцем. Додаткові значення задавайте через `settings.variables`, наприклад `[club_name]`. Кольори імен персонажів задаються в даних персонажа (`nameColor`, `name_color`, `speakerColor`) або через `settings.characterNameColors`; ці кольори зберігаються в `localStorage` разом з іншими налаштуваннями.
 
 ## Формат даних
 
@@ -198,6 +226,7 @@ engine.reset();
 {
   "id": 1,
   "name": "Анна",
+  "nameColor": "#ff88aa",
   "image": "/media/characters/anna-neutral.webp",
   "defaultPosition": "left",
   "emotions": {
@@ -211,6 +240,7 @@ engine.reset();
 | --- | --- | --- |
 | `id` | так | Числовий або рядковий унікальний ID. |
 | `name` | так | Ім’я для UI. |
+| `nameColor` / `name_color` | ні | Колір імені персонажа в діалоговому UI та під спрайтом, якщо увімкнені імена. |
 | `image` | так | URL базового спрайта/портрета. |
 | `defaultPosition` | ні | `left`, `center` або `right`; використовується в діалозі до першого явного показу. |
 | `emotions` | ні | Мапа `назва емоції → URL зображення`. |
@@ -232,11 +262,14 @@ engine.reset();
     "width": "100%",
     "height": "100%"
   },
+  "effect": "blink",
   "next": 2
 }
 ```
 
 Якщо у фонового вузла є `gallery: true`, `galleryId`, `gallery_id`, `unlockGallery` або `unlock_gallery`, рушій викликає `POST /gallery/unlock/` і передає `id`, `nodeId`, `image`, `title`, `chapter`. Після цього зображення можна показувати в галереї через `GET /gallery/`.
+
+Для фону можна вказати `effect` або `effects`. Підтримуються `shake`, `blink`, `glitch`, `pulse`, `flash`; тривалість задається через `duration` / `durationMs`.
 
 ### Вузол `character`
 
@@ -249,6 +282,8 @@ engine.reset();
   "characterId": 1,
   "position": "left",
   "emotion": "happy",
+  "nameColor": "#ff88aa",
+  "effect": "shake",
   "next": 3
 }
 ```
@@ -268,6 +303,8 @@ engine.reset();
 | `characterId` | `number \| string` | ID персонажа з `/characters/`. |
 | `position` | `left \| center \| right` | Позиція для показу; типово `center`. |
 | `emotion` | `string` | Ключ з мапи емоцій, наприклад `happy`. |
+| `nameColor` / `name_color` | `string` | Колір імені персонажа; зберігається в налаштуваннях, якщо заданий вузлом. |
+| `effect` / `effects` | `string \| array` | Ефекти для спрайта: `shake`, `blink`, `glitch`, `pulse`, `flash`. |
 | `style` | `object` | Додаткові inline-стилі для DOM-слоту. |
 | `action` | `"hide"` | Приховує персонажа. |
 | `visible` | `boolean` | `false` також приховує персонажа. |
@@ -289,6 +326,22 @@ engine.reset();
 ```
 
 `dialoguePosition` і `dialogueWidth` можна задавати глобально через `dialogueLayout`, або окремо для конкретної репліки. Так одна новела може мати класичний нижній блок, а інша - компактний блок праворуч чи ліворуч.
+
+Репліки підтримують rich-text теги:
+
+```json
+{
+  "id": 17,
+  "type": "dialogue",
+  "dialogue": {
+    "characterId": 1,
+    "text": "Привіт, [player_name]. {color=#ff88aa}Це рожевий текст{/color}, {cps=12}це повільний текст{/cps}, {shake}а це тремтить{/shake}.{w=0.4} Пауза завершилась."
+  },
+  "next": 18
+}
+```
+
+Доступні теги: `{cps=20}...{/cps}` як characters-per-second у RenPy, `{color=#hex}...{/color}`, `{shake}...{/shake}`, `{blink}...{/blink}`, `{glitch}...{/glitch}`, `{wave}...{/wave}`, `{fade}...{/fade}`, `{b}`, `{i}`, `{u}`, `{size=24}`, `{font=serif}`, `{w=0.5}` для паузи в секундах і `{br}` для переносу рядка. Для `color`, `shake` і `cps` також працює bracket-форма: `[color=#ff88aa]...[/color]`, `[shake]...[/shake]`, `[cps=12]...[/cps]`.
 
 Готовий файл `styles/web-novel.css` можна підключити напряму або перевизначити його CSS-змінні у стилях конкретної новели:
 
@@ -369,6 +422,37 @@ engine.reset();
 }
 ```
 
+### Вузол `effect`
+
+Запускає ефект без зміни фону або персонажа. `target` може бути `background`, `character`, `characters`, `dialogue` або `text`. Для одного персонажа передайте `characterId`; без нього ефект застосовується до всіх видимих персонажів.
+
+```json
+{
+  "id": 11,
+  "type": "effect",
+  "target": "character",
+  "characterId": 1,
+  "effect": "glitch",
+  "duration": 600,
+  "next": 12
+}
+```
+
+### Вузол `end` / `кінець`
+
+Показує кінцевий екран з кнопками `Назад` і `Зіграти знову`. `Назад` веде на `backUrl`, а `Зіграти знову` ховає екран і запускає перший вузол поточного сценарію.
+
+```json
+{
+  "id": 99,
+  "type": "кінець",
+  "backUrl": "/novels",
+  "title": "Кінець",
+  "backLabel": "Назад",
+  "replayLabel": "Зіграти знову"
+}
+```
+
 ### Вузол `choice`
 
 Вузол не має `next`, бо перехід лежить у кожному варіанті.
@@ -414,10 +498,12 @@ engine.reset();
 | `music` | `src` або `action` | Вмикає, паузить, продовжує або зупиняє фонову музику. |
 | `sound` | `src` або `action` | Вмикає окремий звуковий ефект або зупиняє його за `soundId`. |
 | `audio` | `action` або гучність | Керує глобальним аудіо і гучністю каналів. |
+| `effect` / `effects` | `target`, `effect` | Запускає ефект для фону, персонажа або текстового шару. |
 | `choice` | `choices[]` | Показує кнопки та чекає вибору. |
 | `viewport` / `layout` / `orientation` | `orientation` | Змінює орієнтацію та aspect ratio сцени. |
+| `end` / `кінець` | - | Показує кінцевий екран з кнопками повернення і повтору. |
 
-У всіх вузлах `id` обов’язковий. `next` необов’язковий: якщо його немає, це кінець поточної гілки.
+У всіх вузлах `id` обов’язковий. `next` необов’язковий: якщо його немає, це кінець поточної гілки. Для керованого фіналу використовуйте явний вузол `end` / `кінець`.
 
 ## REST API контракт
 
@@ -463,7 +549,8 @@ engine.reset();
     { "id": 2, "type": "character", "characterId": 1, "position": "left", "next": 3 },
     { "id": 3, "type": "dialogue", "dialogue": { "characterId": 1, "text": "Привіт!" }, "next": 4 },
     { "id": 4, "type": "choice", "choices": [{ "label": "Продовжити", "nextNodeId": 5 }] },
-    { "id": 5, "type": "dialogue", "dialogue": { "speakerName": "Оповідач", "text": "Кінець демо." } }
+    { "id": 5, "type": "dialogue", "dialogue": { "speakerName": "Оповідач", "text": "Кінець демо." }, "next": 6 },
+    { "id": 6, "type": "кінець", "backUrl": "/novels" }
   ]
 }
 ```
@@ -526,7 +613,16 @@ class StoryNode(models.Model):
     CHARACTER = "character"
     DIALOGUE = "dialogue"
     CHOICE = "choice"
-    TYPES = [(BACKGROUND, "Background"), (CHARACTER, "Character"), (DIALOGUE, "Dialogue"), (CHOICE, "Choice")]
+    EFFECT = "effect"
+    END = "end"
+    TYPES = [
+        (BACKGROUND, "Background"),
+        (CHARACTER, "Character"),
+        (DIALOGUE, "Dialogue"),
+        (CHOICE, "Choice"),
+        (EFFECT, "Effect"),
+        (END, "End"),
+    ]
 
     chapter = models.PositiveIntegerField(default=1, db_index=True)
     type = models.CharField(max_length=20, choices=TYPES)

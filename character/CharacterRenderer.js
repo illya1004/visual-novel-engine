@@ -8,9 +8,9 @@ export class CharacterRenderer {
         this.slots = slots;
         this.config = {
             positions: {
-                left: (scale) => ({ left: "0", right: "auto", transform: `scale(${scale})` }),
-                right: (scale) => ({ left: "auto", right: "0", transform: `scale(${scale})` }),
-                center: (scale) => ({ left: "50%", right: "auto", transform: `translateX(-50%) scale(${scale})` })
+                left: (scale) => ({ left: "0", right: "auto", transform: `scale(${scale})`, transformOrigin: "bottom left" }),
+                right: (scale) => ({ left: "auto", right: "0", transform: `scale(${scale})`, transformOrigin: "bottom right" }),
+                center: (scale) => ({ left: "50%", right: "auto", transform: `translateX(-50%) scale(${scale})`, transformOrigin: "bottom center" })
             },
             speakOpacity: 1,
             idleOpacity: 0.65,
@@ -19,7 +19,155 @@ export class CharacterRenderer {
             showCharacterNames: false,
             ...config
         };
+        this.setCharacterScales({
+            activeCharacterScale: this.config.activeCharacterScale,
+            inactiveCharacterScale: this.config.inactiveCharacterScale,
+            active_character_scale: this.config.active_character_scale,
+            inactive_character_scale: this.config.inactive_character_scale,
+            activeScale: this.config.activeScale,
+            inactiveScale: this.config.inactiveScale,
+            characterActiveScale: this.config.characterActiveScale,
+            characterInactiveScale: this.config.characterInactiveScale,
+            character_active_scale: this.config.character_active_scale,
+            character_inactive_scale: this.config.character_inactive_scale,
+            speakingScale: this.config.speakingScale,
+            speaking_scale: this.config.speaking_scale,
+            idleScale: this.config.idleScale,
+            idle_scale: this.config.idle_scale,
+            speakScale: this.config.speakScale,
+            speak_scale: this.config.speak_scale
+        });
         this.activeCharacterId = null;
+    }
+
+    _coerceScale(value, fallback) {
+        const scale = Number(value);
+        return Number.isFinite(scale) && scale > 0 ? scale : fallback;
+    }
+
+    setCharacterScales(scales = {}, inactiveScaleValue = undefined) {
+        const nextScales = typeof scales === "object" && scales !== null
+            ? scales
+            : {
+                activeCharacterScale: scales,
+                inactiveCharacterScale: inactiveScaleValue
+            };
+        const activeScale = nextScales.active
+            ?? nextScales.activeCharacterScale
+            ?? nextScales.active_character_scale
+            ?? nextScales.characterActiveScale
+            ?? nextScales.character_active_scale
+            ?? nextScales.speakingScale
+            ?? nextScales.speaking_scale
+            ?? nextScales.speak_scale
+            ?? nextScales.speakScale;
+        const inactiveScale = nextScales.inactive
+            ?? nextScales.inactiveCharacterScale
+            ?? nextScales.inactive_character_scale
+            ?? nextScales.characterInactiveScale
+            ?? nextScales.character_inactive_scale
+            ?? nextScales.inactiveScale
+            ?? nextScales.inactive_scale
+            ?? nextScales.idle_scale
+            ?? nextScales.idleScale;
+
+        this.config.speakScale = this._coerceScale(activeScale, this.config.speakScale);
+        this.config.idleScale = this._coerceScale(inactiveScale, this.config.idleScale);
+
+        return this.getCharacterScales();
+    }
+
+    getTransformOrigin(position = "center") {
+        if (position === "left") {
+            return "bottom left";
+        }
+
+        if (position === "right") {
+            return "bottom right";
+        }
+
+        return "bottom center";
+    }
+
+    normalizeAppearanceStyle(style = {}) {
+        const {
+            imageMaxHeight,
+            image_max_height,
+            imageHeight,
+            image_height,
+            imageMaxWidth,
+            image_max_width,
+            scale,
+            characterScale,
+            character_scale,
+            offsetX,
+            offset_x,
+            offsetY,
+            offset_y,
+            transform,
+            transformOrigin,
+            transform_origin,
+            ...slotStyle
+        } = style || {};
+
+        return {
+            slotStyle,
+            imageStyle: {
+                maxHeight: imageMaxHeight ?? image_max_height ?? imageHeight ?? image_height ?? "100%",
+                maxWidth: imageMaxWidth ?? image_max_width ?? "100%"
+            },
+            scale: this._coerceScale(scale ?? characterScale ?? character_scale, 1),
+            offsetX: this.normalizeLength(offsetX ?? offset_x ?? "0px"),
+            offsetY: this.normalizeLength(offsetY ?? offset_y ?? "0px"),
+            transformOrigin: transformOrigin ?? transform_origin ?? null,
+            extraTransform: transform || ""
+        };
+    }
+
+    normalizeLength(value, fallback = "0px") {
+        if (value === undefined || value === null || value === "") {
+            return fallback;
+        }
+
+        if (typeof value === "number") {
+            return value === 0 ? "0px" : `${value}px`;
+        }
+
+        const text = String(value).trim();
+
+        if (!text) {
+            return fallback;
+        }
+
+        if (/^-?\d+(\.\d+)?$/.test(text)) {
+            return `${text}px`;
+        }
+
+        return text;
+    }
+
+    getScaleBoundedMaxHeight(value, scale) {
+        const maxVisualPercent = 100 / this._coerceScale(scale, 1);
+        const rawValue = value === undefined || value === null || value === "" ? "100%" : String(value);
+        const percentMatch = /^\s*(\d+(?:\.\d+)?)%\s*$/.exec(rawValue);
+
+        if (percentMatch) {
+            return `${Math.min(Number(percentMatch[1]), maxVisualPercent)}%`;
+        }
+
+        return `min(${rawValue}, ${maxVisualPercent}%)`;
+    }
+
+    withOffsetTransform(transform, offsetX = "0px", offsetY = "0px", extraTransform = "") {
+        const offsetTransform = `translate(${offsetX || "0px"}, ${offsetY || "0px"})`;
+        return [transform, offsetTransform, extraTransform].filter(Boolean).join(" ");
+    }
+
+    getCharacterScales() {
+        return {
+            activeCharacterScale: this.config.speakScale,
+            inactiveCharacterScale: this.config.idleScale
+        };
     }
 
     getPreferredContainerId() {
@@ -109,7 +257,9 @@ export class CharacterRenderer {
         const slotElement = document.createElement("div");
         slotElement.className = "character-slot";
         slotElement.style.position = "absolute";
+        slotElement.style.top = "0";
         slotElement.style.bottom = "0";
+        slotElement.style.height = "100%";
         slotElement.style.display = "flex";
         slotElement.style.flexDirection = "column";
         slotElement.style.alignItems = "center";
@@ -117,11 +267,13 @@ export class CharacterRenderer {
         slotElement.style.transition = "opacity 0.3s ease, transform 0.3s ease, filter 0.3s ease";
         slotElement.style.opacity = "1";
         slotElement.style.transform = "scale(1)";
+        slotElement.style.transformOrigin = "bottom center";
         slotElement.style.filter = "brightness(1)";
 
         const imgElement = document.createElement("img");
         imgElement.alt = characterId;
-        imgElement.style.maxHeight = "80vh";
+        imgElement.style.maxHeight = "100%";
+        imgElement.style.maxWidth = "100%";
         imgElement.style.width = "auto";
         imgElement.style.height = "auto";
         imgElement.style.objectFit = "contain";
@@ -147,23 +299,34 @@ export class CharacterRenderer {
         return createdSlot;
     }
 
-    applySlotAppearance(slot, state, isSpeaking) {
+    applySlotAppearance(slot, state, isSpeaking, appearance = {}) {
         const opacity = isSpeaking ? this.config.speakOpacity : this.config.idleOpacity;
-        const scale = isSpeaking ? this.config.speakScale : this.config.idleScale;
+        const baseScale = isSpeaking ? this.config.speakScale : this.config.idleScale;
+        const scale = baseScale * this._coerceScale(appearance.scale, 1);
         const filter = isSpeaking ? "brightness(1)" : "brightness(0.65)";
         const positionBuilder = this.config.positions[state.position] || this.config.positions.center;
         const positionStyles = positionBuilder(scale);
+        const transformOrigin = appearance.transformOrigin || positionStyles.transformOrigin || this.getTransformOrigin(state.position);
 
         Object.assign(slot.slotElement.style, {
             ...positionStyles,
+            top: positionStyles.top ?? "0",
+            bottom: positionStyles.bottom ?? "0",
+            height: positionStyles.height ?? "100%",
             opacity: String(opacity),
             filter,
-            transform: positionStyles.transform,
-            display: "block",
+            transform: this.withOffsetTransform(positionStyles.transform, appearance.offsetX, appearance.offsetY, appearance.extraTransform),
+            transformOrigin,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "flex-end",
             visibility: "visible"
         });
 
         if (slot.imgElement) {
+            slot.imgElement.style.maxHeight = this.getScaleBoundedMaxHeight(appearance.imageStyle?.maxHeight, scale);
+            slot.imgElement.style.maxWidth = appearance.imageStyle?.maxWidth || "100%";
             slot.imgElement.style.opacity = String(opacity);
             slot.imgElement.style.filter = filter;
             slot.imgElement.style.display = "block";
@@ -178,6 +341,18 @@ export class CharacterRenderer {
             slot.slotElement.classList.toggle("active", state.speaking);
             slot.slotElement.classList.toggle("dim", !state.speaking);
         }
+    }
+
+    getCharacterNameColor(character = {}, state = {}) {
+        return state.nameColor
+            ?? character.nameColor
+            ?? character.name_color
+            ?? character.nameColour
+            ?? character.name_colour
+            ?? character.speakerColor
+            ?? character.speaker_color
+            ?? character.color
+            ?? null;
     }
 
     render(state, character, style = {}) {
@@ -195,6 +370,8 @@ export class CharacterRenderer {
         const imageUrl = state.image || character?.image || null;
         const displayName = character?.name || state.id;
         const isSpeaking = state.speaking;
+        const nameColor = this.getCharacterNameColor(character, state);
+        const appearance = this.normalizeAppearanceStyle(style);
 
         if (slot.imgElement) {
             slot.imgElement.src = imageUrl;
@@ -203,6 +380,7 @@ export class CharacterRenderer {
         if (slot.nameElement && this.config.showCharacterNames) {
             slot.nameElement.textContent = displayName;
             slot.nameElement.style.display = "block";
+            slot.nameElement.style.color = nameColor || "#fff";
         } else if (slot.nameElement) {
             slot.nameElement.textContent = "";
             slot.nameElement.style.display = "none";
@@ -215,10 +393,10 @@ export class CharacterRenderer {
             maxWidth: "280px",
             minWidth: "180px",
             zIndex: "2",
-            ...style
+            ...appearance.slotStyle
         });
 
-        this.applySlotAppearance(slot, state, isSpeaking);
+        this.applySlotAppearance(slot, state, isSpeaking, appearance);
 
         return slot;
     }

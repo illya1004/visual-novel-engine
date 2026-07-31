@@ -12,6 +12,8 @@ export class NodeManager {
         this.galleryManager = managers.galleryManager || api?.galleryManager || null;
         this.choiceManager = managers.choiceManager || api?.choiceManager || null;
         this.viewportManager = managers.viewportManager || api?.viewportManager || null;
+        this.effectsManager = managers.effectsManager || api?.effectsManager || null;
+        this.endScreenManager = managers.endScreenManager || api?.endScreenManager || null;
         this.transitionLogger = managers.transitionLogger || api?.transitionLogger || null;
         this._lastChoiceNode = null;
     }
@@ -66,6 +68,24 @@ export class NodeManager {
         return this.get(this.currentNodeId);
     }
 
+    normalizeNodeType(type) {
+        return String(type ?? "").trim().toLowerCase();
+    }
+
+    isEndNode(node = {}) {
+        const type = this.normalizeNodeType(node.type);
+
+        return node.end === true
+            || node.finish === true
+            || [
+                "end",
+                "ending",
+                "finish",
+                "finished",
+                "кінець"
+            ].includes(type);
+    }
+
     goTo(nodeId) {
         const targetNode = this.get(nodeId);
 
@@ -81,6 +101,7 @@ export class NodeManager {
             return null;
         }
 
+        this.endScreenManager?.hide?.();
         const firstNode = this.nodes[0];
         this._moveToNode(firstNode, 'start');
         return this.executeNode(this.current());
@@ -142,6 +163,16 @@ export class NodeManager {
         return null;
     }
 
+    wait(ms = 0) {
+        const delay = Number(ms);
+
+        if (!Number.isFinite(delay) || delay <= 0) {
+            return Promise.resolve();
+        }
+
+        return new Promise(resolve => setTimeout(resolve, delay));
+    }
+
     async executeNode(node) {
         if (!node) {
             return null;
@@ -179,8 +210,16 @@ export class NodeManager {
             case 'choice':
                 result = await this.handleChoiceNode(node);
                 break;
+            case 'effect':
+            case 'effects':
+                result = await this.handleEffectNode(node);
+                break;
             default:
-                result = node;
+                if (this.isEndNode(node)) {
+                    result = await this.handleEndNode(node);
+                } else {
+                    result = node;
+                }
         }
 
         return await this.handleNodeOptions(node) ?? result;
@@ -196,6 +235,8 @@ export class NodeManager {
         }
 
         await this.galleryManager?.unlockFromNode?.(node);
+
+        await this.applyNodeEffects(node, { target: "background" });
 
         return node;
     }
@@ -218,6 +259,12 @@ export class NodeManager {
             text: node.text || "",
             characterId: node.characterId ?? node.character_id,
             speakerName: node.speakerName ?? node.speaker_name,
+            speakerNameColor: node.speakerNameColor ?? node.speaker_name_color,
+            nameColor: node.nameColor ?? node.name_color,
+            characterNameColor: node.characterNameColor ?? node.character_name_color,
+            cps: node.cps ?? node.charactersPerSecond ?? node.characters_per_second,
+            textSpeed: node.textSpeed ?? node.text_speed,
+            typewriterSpeed: node.typewriterSpeed ?? node.typewriter_speed,
             speaking: node.speaking ?? node.isSpeaking ?? node.is_speaking,
             ...this._getDialogueControlFields(node)
         };
@@ -408,6 +455,21 @@ export class NodeManager {
             dialogueToShow.speakerName = speakerCharacter.name;
         }
 
+        if (
+            dialogueToShow
+            && typeof dialogueToShow === "object"
+            && this._getNameColor(dialogueToShow) === null
+            && (dialogueToShow.characterId ?? dialogueToShow.character_id) !== null
+            && (dialogueToShow.characterId ?? dialogueToShow.character_id) !== undefined
+        ) {
+            const characterId = dialogueToShow.characterId ?? dialogueToShow.character_id;
+            const speakerNameColor = this.charactersManager?.getCharacterNameColor?.(characterId);
+
+            if (speakerNameColor) {
+                dialogueToShow.speakerNameColor = speakerNameColor;
+            }
+        }
+
         dialogueToShow = this.settingsManager?.applyToDialogueData?.(dialogueToShow) ?? dialogueToShow;
 
         if (this.dialogueManager?.show) {
@@ -415,6 +477,16 @@ export class NodeManager {
         }
 
         return node;
+    }
+
+    _getNameColor(data = {}) {
+        return data.speakerNameColor
+            ?? data.speaker_name_color
+            ?? data.nameColor
+            ?? data.name_color
+            ?? data.characterNameColor
+            ?? data.character_name_color
+            ?? null;
     }
 
     async handleCharacterNode(node) {
@@ -433,6 +505,18 @@ export class NodeManager {
             ?? (resetEmotionAction || (hasEmotionField && node.emotion === null));
 
         if (node.visible === false || action === 'hide') {
+            const effectDefaults = {
+                target: "character",
+                characterId
+            };
+            const effectedElements = (await this.applyNodeEffects(node, effectDefaults)) ?? [];
+
+            if (effectedElements.length) {
+                await this.wait(this.effectsManager?.getNodeEffectRuntime?.(node, effectDefaults, {
+                    infiniteAsOneIteration: true
+                }) ?? 0);
+            }
+
             if (this.charactersManager?.hideCharacter) {
                 this.charactersManager.hideCharacter(characterId);
             }
@@ -448,6 +532,13 @@ export class NodeManager {
 
             if (resetEmotion !== false) {
                 options.resetEmotion = resetEmotion;
+            }
+
+            const nameColor = this._getNameColor(node);
+
+            if (nameColor !== null) {
+                options.nameColor = nameColor;
+                this.settingsManager?.setCharacterNameColor?.(characterId, nameColor);
             }
 
             this.charactersManager.showCharacter(
@@ -471,6 +562,11 @@ export class NodeManager {
                 speaking: true
             });
         }
+
+        await this.applyNodeEffects(node, {
+            target: "character",
+            characterId
+        });
 
         return node;
     }
@@ -496,9 +592,33 @@ export class NodeManager {
     async handleChoiceNode(node) {
         this._lastChoiceNode = node;
         if (this.choiceManager) {
-            this.choiceManager.show(node.choices || []);
+            const choices = (node.choices || []).map((choice) => ({
+                ...choice,
+                label: this.settingsManager?.replaceVariables?.(choice.label) ?? choice.label,
+                text: this.settingsManager?.replaceVariables?.(choice.text) ?? choice.text
+            }));
+            this.choiceManager.show(choices);
         }
         return node;
+    }
+
+    async handleEffectNode(node) {
+        this.effectsManager?.applyNode?.(node);
+        return node;
+    }
+
+    async handleEndNode(node) {
+        this.choiceManager?.clear?.();
+        this.endScreenManager?.show?.(node);
+        return node;
+    }
+
+    async applyNodeEffects(node, defaults = {}) {
+        if (!this.effectsManager?.applyEffectsFromNode) {
+            return [];
+        }
+
+        return this.effectsManager.applyEffectsFromNode(node, defaults);
     }
 }
 

@@ -23,6 +23,7 @@ export class DialogueManager {
         this.typewriter = options.typewriter || null;
         this.typewriterSpeed = options.typewriterSpeed ?? 25;
         this.textSize = options.textSize ?? null;
+        this.richTextEnabled = options.richText?.enabled ?? options.richTextEnabled ?? options.richText ?? true;
         this.defaultLayout = {
             position: options.layout?.position ?? options.position ?? "full",
             width: options.layout?.width ?? options.width ?? null
@@ -53,7 +54,8 @@ export class DialogueManager {
 
         if (!this.typewriter && this.targetElement) {
             this.typewriter = new Typewriter(this.targetElement, {
-                speedMultiplier: this.typewriterSpeedMultiplier
+                speedMultiplier: this.typewriterSpeedMultiplier,
+                richTextEnabled: this.richTextEnabled
             });
         }
     }
@@ -62,12 +64,32 @@ export class DialogueManager {
         return dialogue?.speakerName ?? dialogue?.speaker_name ?? "";
     }
 
+    getSpeakerNameColor(dialogue) {
+        return dialogue?.speakerNameColor
+            ?? dialogue?.speaker_name_color
+            ?? dialogue?.nameColor
+            ?? dialogue?.name_color
+            ?? dialogue?.characterNameColor
+            ?? dialogue?.character_name_color
+            ?? null;
+    }
+
     showSpeakerName(dialogue) {
         if (!this.speakerNameElement) {
             return;
         }
 
         this.speakerNameElement.textContent = this.getSpeakerName(dialogue);
+
+        const color = this.getSpeakerNameColor(dialogue);
+
+        if (color) {
+            this.speakerNameElement.style.color = String(color);
+        } else if (this.speakerNameElement.style?.removeProperty) {
+            this.speakerNameElement.style.removeProperty("color");
+        } else if (this.speakerNameElement.style) {
+            this.speakerNameElement.style.color = "";
+        }
     }
 
     setTypewriterSpeed(speed) {
@@ -167,8 +189,18 @@ export class DialogueManager {
             width: dialogueData.dialogueWidth ?? dialogueData.dialogue_width ?? dialogueData.boxWidth ?? dialogueData.box_width
         });
 
+        const textSpeed = dialogueData.textSpeed
+            ?? dialogueData.text_speed
+            ?? dialogueData.typewriterSpeed
+            ?? dialogueData.typewriter_speed
+            ?? this.typewriterSpeed;
+        const cps = dialogueData.cps
+            ?? dialogueData.charactersPerSecond
+            ?? dialogueData.characters_per_second
+            ?? null;
+
         if (this.typewriter) {
-            await this.typewriter.write(dialogueData.text || "", this.typewriterSpeed);
+            await this.typewriter.write(dialogueData.text || "", textSpeed, { cps });
         } else if (this.targetElement) {
             this.targetElement.textContent = dialogueData.text || "";
         }
@@ -198,8 +230,14 @@ export class DialogueManager {
         this.currentDialogue = null;
     }
 
+    isTyping() {
+        return Boolean(this.typewriter?.isTyping);
+    }
+
     finish() {
+        const wasTyping = this.isTyping();
         this.typewriter?.finish();
+        return wasTyping;
     }
 
     cancel() {

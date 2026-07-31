@@ -7,6 +7,7 @@ export class CharacterState {
         this.image = null;
         this.lastShownAt = null;
         this.speaking = false;
+        this.nameColor = null;
     }
 
     setEmotion(emotion) {
@@ -33,6 +34,10 @@ export class CharacterState {
 
     setImage(image) {
         this.image = image;
+    }
+
+    setNameColor(color) {
+        this.nameColor = color ?? null;
     }
 
     resetAppearance(image = null) {

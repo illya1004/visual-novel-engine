@@ -10,14 +10,22 @@ export class Engine {
     }
 
     _syncState(node) {
+        const isFinished = !node || this.nodeManager?.isEndNode?.(node) === true;
+
         this.state.currentNodeId = node?.id ?? this.nodeManager?.currentNodeId ?? null;
         this.state.isWaitingForChoice = node?.type === "choice";
-        this.state.status = node ? "running" : "finished";
+        this.state.status = isFinished ? "finished" : "running";
+
+        if (isFinished) {
+            this.save?.stopAutoSave?.();
+        }
+
         return this.state;
     }
 
     async start() {
         this.state.status = "loading";
+        this.endScreen?.hide?.();
         this.viewport?.start?.();
         await this.settings?.promptForNovelStart?.();
         await this.characters?.loadCharacters?.();
@@ -34,7 +42,24 @@ export class Engine {
         return node;
     }
 
+    finishDialogueIfTyping() {
+        const isTyping = this.dialogue?.isTyping?.() ?? this.dialogue?.typewriter?.isTyping ?? false;
+
+        if (!isTyping) {
+            return false;
+        }
+
+        this.dialogue?.finish?.();
+        return true;
+    }
+
     async next() {
+        if (this.finishDialogueIfTyping()) {
+            const node = this.nodeManager?.current?.() ?? null;
+            this._syncState(node);
+            return node;
+        }
+
         const node = await this.nodeManager?.next?.();
         this._syncState(node);
         return node;
@@ -86,6 +111,24 @@ export class Engine {
         return result;
     }
 
+    async restart() {
+        this.dialogue?.cancel?.();
+        this.choice?.clear?.();
+        this.endScreen?.hide?.();
+        this.characters?.clearCharacters?.();
+        this.background?.clear?.();
+        this.sound?.stopAll?.();
+
+        if (!this.nodeManager?.nodes?.length) {
+            await this.nodeManager?.loadNodes?.();
+        }
+
+        const node = await this.nodeManager?.start?.();
+        this.save?.startAutoSave?.(this);
+        this._syncState(node);
+        return node;
+    }
+
     toggleInterface(forceHidden) {
         return this.interface?.toggleInterface?.(forceHidden) ?? false;
     }
@@ -93,6 +136,7 @@ export class Engine {
     reset() {
         this.dialogue?.cancel?.();
         this.choice?.clear?.();
+        this.endScreen?.hide?.();
         this.characters?.clearCharacters?.();
         this.sound?.stopAll?.();
         this.save?.stopAutoSave?.();
